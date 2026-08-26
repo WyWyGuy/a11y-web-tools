@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html style="height: 100%;">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>A11y Web Tools—Help</title>
+    <style>
+        body {
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+            scroll-behavior: smooth;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+        }
+
+        .contentBody {
+            width: min(800px, 90%);
+            height: min(1000px, 90%);
+            background-color: #002d5f;
+            padding: 16px;
+            overflow-y: auto;
+            scrollbar-color: #ccc rgba(0, 0, 0, 0);
+            border-radius: 10px;
+        }
+
+        h1, h2 {
+            text-align: center;
+            margin: 8px 0 16px;
+            font-size: 32px;
+        }
+
+        h3 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-size: 20px;
+        }
+
+        p {
+            line-height: 1.45;
+            margin: 8px 0 12px;
+            font-size: 16px;
+        }
+
+        li {
+            font-size: 16px;
+            margin: 4px 0;
+        }
+
+        .separator {
+            width: 80%;
+            height: 2px;
+            color: #ccc;
+            background-color: #ccc;
+            border: none;
+            border-radius: 4px;
+            margin: 12px auto;
+            display: block;
+        }
+
+        .blankSpace {
+            height: 32px;
+        }
+
+        code {
+            background: rgba(255, 255, 255, 0.06);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #fff;
+        }
+
+        .verticleAlign {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toolIcon {
+            width: 30px;
+            height: 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="contentBody">
+        <h1>A11y Web Tools</h1>
+
+        <hr class="separator" />
+
+        <h2>Purpose</h2>
+        <p>
+            A11y Web Tools is an extension that helps you create and inspect websites and applications to make them accessible.
+            It was designed primarily for use with the Canvas LMS, but works on any website.
+        </p>
+
+        <hr class="separator" />
+        <div class="blankSpace"></div>
+
+        <h2>Tool Descriptions</h2>
+
+        <h3 class="verticleAlign"><img class="toolIcon" alt="" role="presentation" src="images/helps_all.png">Activate All / Deactivate All<img class="toolIcon" alt="" role="presentation" src="images/helps_none.png"></h3>
+        <p>
+            These buttons toggle all primary A11y Web Tools (six tools beneath it) at once. Your preferences are saved and
+            automatically applied when you load a Canvas page.
+        </p>
+
+        <h3 class="verticleAlign"><img class="toolIcon" alt="" role="presentation" src="images/helps_image.png">Image Overlays</h3>
+        <p>
+            Adds overlays around images that display alt text, indicate decorative images, or show a warning when alt text is
+            missing.
+        </p>
+
+        <h3 class="verticleAlign"><img class="toolIcon" alt="" role="presentation" src="images/helps_iframe.png">Iframe Overlays</h3>
+        <p>
+            Adds overlays around iframes that display attributes such as <code>aria-label</code>, <code>aria-description</code>,
+            and <code>title</code>, or indicate when they are missing. Emoji icons show which attributes a typical screen reader
+            would announce. Red labels indicate attributes that may need to be fixed.
+        </p>
+
+        <h3 class="verticleAlign"><img class="toolIcon" alt="" role="presentation" src="images/helps_heading.png">Heading Overlays</h3>
+        <p>
+            Adds overlays that label headings with their level (H1, H2, etc.). This is useful for identifying whether headings
+            are ordered properly.
+        </p>
+
+        <h3 class="verticleAlign"><img class="toolIcon" alt="" role="presentation" src="images/helps_table.png">Table Overlays</h3>
+        <p>
+            Adds overlays only to tables that have potential issues (for example, missing <code>scope</code> attributes, missing
+            header cells, or the use of merged cells). Additional settings can also enable highlighting table header cells for all
+            tables.
+        </p>
+
+        <h3 class="verticleAlign"><img class="toolIcon" alt="" role="presentation" src="images/helps_color.png">Contrast Highlighting</h3>
+        <p>
+            Highlights text that fails WCAG color-contrast requirements. The analysis accounts for text size, text color, and
+            background color. Hovering over the highlighted text shows recommended changes to either the text color or background
+            color to satisfy color contrast requirements. While hovering, <code>Shift + left-click</code> to copy the hex code for the
+            recommended text color or <code>Shift + right-click</code> to copy the hex code for the recommended background color.
+        </p>
+
+        <h3 class="verticleAlign"><img class="toolIcon" alt="" role="presentation" src="images/helps_lang.png">Language Highlighting</h3>
+        <p>
+            Highlights text that may require a change to the <code>lang</code> attribute. This uses a combination of a local
+            AI language prediction model and a large dictionary of English words. The tool tries to determine the language of the
+            text and compares it to the semantically declared language. If they don't match, the text is flagged as a potential
+            error. Neither the dictionary nor the AI model are perfect, so false positives can occur.
+        </p>
+
+        <h3 class="verticleAlign"><img class="toolIcon" alt="" role="presentation" src="images/helps_table.png"><img class="toolIcon" alt="" role="presentation" src="images/helps_iframe.png"><img class="toolIcon" alt="" role="presentation" src="images/helps_paragraph.png">Count Elements</h3>
+        <p>
+            Provides three counting options that add 1-indexed overlays to tables, iframes, or paragraphs. This makes it easier
+            to find the n-th element when reviewing accessibility reports.
+        </p>
+
+        <h3 class="verticleAlign"><img class="toolIcon" alt="" role="presentation" src="images/helps_coding.png">Raw HTML Editor</h3>
+        <p>
+            When enabled, this tool automatically switches the Canvas editor from the graphical editor to the raw HTML view. 
+            This setting preserves your preference for the raw HTML editor.
+        </p>
+
+        <h3 class="verticleAlign"><img class="toolIcon" alt="" role="presentation" src="images/helps_dropdown.png">Open Dropdown Menus</h3>
+        <p>
+            When enabled, loading a Canvas page automatically expands dropdown menus so all content is visible for inspection. Note
+            that Canvas sometimes expects only one dropdown to be open at a time, so the resulting layout may appear differently than
+            it would normally.
+        </p>
+
+        <h3 class="verticleAlign"><img class="toolIcon" alt="" role="presentation" src="images/helps_cursor.png">Color Contrast Inspector</h3>
+        <p>
+            Enables a hover inspector that shows the hex codes for text and background colors. Use <code>right/left click</code>
+            to copy hex codes. The inspector also reports whether the color contrast passes WCAG guidelines, taking font size into account.
+        </p>
+
+        <h3 class="verticleAlign"><img class="toolIcon" alt="" role="presentation" src="images/helps_spreadsheet.png">Download SLA Files</h3>
+        <p>
+            If you are on a Teamwork page, this tool attempts to download SLA reports using existing filters.
+        </p>
+
+        <hr class="separator" />
+        <div class="blankSpace"></div>
+
+        <h2>User Settings</h2>
+
+        <h3>Run Enabled Tools on <strong>All</strong> Pages</h3>
+        <p>
+            When enabled, the main six A11y tools will automatically run (if enabled), regardless of what page is being viewed. Your 
+            per-tool preferences are saved.
+        </p>
+
+        <h3>Enable Numpad <code>+</code> / <code>-</code> Hotkeys for A11y Tools</h3>
+        <p>
+            When enabled, the numpad <code>+</code> key activates all primary a11y tools and the numpad <code>-</code> key
+            deactivates them all.
+        </p>
+
+        <h3>Enable <code><span class="altKey">Alt</span> + &darr;</code> / <code>&uarr;</code> to Expand/Collapse Dropdowns</h3>
+        <p>
+            When enabled, using <code><span class="altKey">Alt</span> + &darr;</code> expands all Canvas dropdowns and
+            <code><span class="altKey">Alt</span> + &uarr;</code> collapses them.
+        </p>
+
+        <h3>Enable Raw HTML Editor Highlights</h3>
+        <p>When enabled, the raw HTML editor in Canvas highlights elements related to accessibility, including:</p>
+        <ul>
+            <li><code>aria-label="..."</code></li>
+            <li><code>title="..."</code> or <code>aria-description="..."</code></li>
+            <li><code>alt="..."</code></li>
+            <li><code>&lt;table&gt;</code> (table tags)</li>
+            <li><code>&lt;h#&gt;...&lt;/h#&gt;</code> (heading tags; darker for larger headings)</li>
+            <li><code>lang="..."</code></li>
+            <li>Invisible links</li>
+        </ul>
+
+        <h3>Enable Additional Raw Editor Toolbar</h3>
+        <p>
+            When enabled, the raw HTML editor receives an additional menu that includes a refined search tool (integrates with
+            <code><span class="modifierKey">Ctrl</span> + F</code>), an easier-to-access Save button, and an aria-label fixer.
+            Activating it will prompt you to choose or type an accessible label for each iframe.
+            Finally, enabling this option also adds the ability to save edits with <code><span class="modifierKey">Ctrl</span> + S</code>.
+        </p>
+
+        <h3>Expand Canvas Edit Pages by Default</h3>
+        <p>
+            When enabled, the editors in Canvas open in a larger view by default. This includes both the graphical editor and
+            the raw HTML editor.
+        </p>
+
+        <h3>Highlight Table Headers</h3>
+        <p>
+            When enabled, the main a11y table tool will also highlight all <code>&lt;th&gt;</code> header cells, making them
+            easier to identify.
+        </p>
+
+        <h3>Enable Counting Canvas Modules</h3>
+        <p>
+            When enabled, overlays will be added to count Canvas modules on the Modules page and the Home page (if applicable).
+            Overlays are 1-indexed. Each module overlay also includes a link to open all pages in that module.
+        </p>
+
+        <h3>Enable Canvas File Paths on Hover</h3>
+        <p>
+            When enabled, hovering over a file on the Canvas Files page shows the file path as a tooltip and adds a link to open
+            the folder that contains the file. This especially helps when using the Canvas file search tool.
+        </p>
+
+        <h3>Enable <code><span class="modifierKey">Ctrl</span> + Q</code> for H5P Language Replacement</h3>
+        <p>
+            When enabled, this setting allows you to apply the currently chosen language attribute to highlighted text
+            within H5P activities by using <code><span class="modifierKey">Ctrl</span> + Q</code>. Additionally, when
+            you open the language selection menu within H5P activities, it will automatically scroll to the currently
+            chosen language.
+        </p>
+
+        <h3>Current H5P Language</h3>
+        <p>
+            This setting allows you to choose which language to use for the above setting. Language input is case insensitive
+            and utilizes a partial match. This setting is persistent.
+        </p>
+
+        <hr class="separator" />
+        <div class="blankSpace"></div>
+
+        <h2>Frequently Asked Questions</h2>
+
+        <h3>What does "a11y" mean?</h3>
+        <p>
+            A11y is the standard abbreviation for "accessibility". The number 11 represents the eleven letters between "a" and "y".
+        </p>
+
+        <h3>Why aren't the a11y tools automatically running?</h3>
+        <p>
+            By default, the a11y tools only automatically run on Canvas pages. Since some pages on Canvas don't support
+            editing, the tools won't automatically run. This includes pages like Modules, Files, Settings, and similar
+            views. To have the tools automatically run on non-Canvas pages, enable the <strong>Automatically Run Tools
+            on All Pages</strong> setting and ensure the a11y tools are enabled.
+        </p>
+
+        <h3>Why doesn't the page update when I change a setting?</h3>
+        <p>
+            Some tools and settings require a page refresh to take effect. If you don't see changes happen, try
+            reloading the page.
+        </p>
+
+        <h3>Why aren't my a11y tool settings preserved?</h3>
+        <p>
+            Tool settings are only saved on pages that the tools will also automatically run on. If you enable
+            tools on a page where they don't run (such as the Modules page), those preferences won't be saved.
+            When the <strong>Run Enabled Tools on All Pages</strong> setting is enabled, a11y tool settings
+            will be preserved.
+        </p>
+
+        <h3>Why isn't the Canvas edit box expanding?</h3>
+        <p>
+            The edit box only expands when there's enough content to benefit from the expansion.
+            If the page content is too small, the extension won't expand the edit box.
+        </p>
+    </div>
+
+    <script src="help.js"></script>
+</body>
+
+</html>
