@@ -1,0 +1,44 @@
+Title: A11y Web Tools
+
+Summary: Several tools for identifying and fixing web accessibility errors efficiently.
+
+Description:
+
+This extension provides tools to analyze and fix web accessibility issues more efficiently. It was designed to primarily work with the Canvas LMS, but is compatible with all websites. It adds the following features, which can be toggled on or off:
+
+1. Image tool to quickly reveal an image's alt text.
+2. Iframe tool to reveal the title, aria-label, and aria-description of iframes.
+3. Heading tool to highlight heading levels 1-6.
+4. Contrast highlights to mark potential color contrast insufficiencies.
+5. Lang highlights to mark text that potentially needs a corrected language attribute.
+6. Table tool to highlight tables that are missing semantic details.
+7. Element counting tools for table, iframe, and paragraph tags.
+8. Automatically switch to the raw HTML editor on Canvas.
+9. Automatically open all dropdowns on Canvas.
+10. Contrast inspection tool for easy analysis and copying of color codes.
+11. SLA report downloader from the Teamwork website.
+12. Highlights for the raw HTML editor in Canvas for portions of code that relate to accessibility.
+13. An aria-label fixer for Canvas pages that makes adding aria-labels simpler.
+14. Automatically expand the Canvas editors.
+15. Highlight table header cells.
+16. Make counting modules easier on Canvas courses.
+17. Canvas file path tool to easily link to where a file is stored in Canvas.
+18. H5P editor tool which makes adding language attributes faster and easier.
+
+These tools exist to help make web accessibility more efficient so that we can make the internet a more accessible place for everyone!
+
+
+
+Single Purpose: The purpose of A11y Web Tools is to provide a set of tools used to make the process of web accessibility more efficient by highlighting potential issues and displaying relevant information easily.
+
+Tabs Justification: Tabs is needed for the extension to interact with the pages to identify and highlight accessibility issues.
+
+Scripting Justification: Scripting is what allows the extension to inject the individual scripts into the page, which is how the main functionality works to add details about accessibility flags.
+
+Storage Justification: This extension stores the users preferences so that they don't have to reestablish their setup for every page they visit.
+
+WebNavigation Justification: In order to make sure that the accessibility tools run recursively on iframes embedded in pages, it's necessary to track when iframes are finished loading.
+
+Host Permission Justification: In conjunction with the scripting justification, host permissions is required to actually inject the script into any page. For efficiency, the scripts should load automatically upon page load. I opted to use this method because it allows me to filter dynamically when to inject or not rather than just injecting every script into every page. It also ensures that the tools can be run on any page the user visits. Originally, I had built these tools to work with Tampermonkey, but now I'm trying to get similar functionality but as a standalone extension instead of a userscript.
+
+Offscreen Justification: The offscreen document is used to host a dedicated worker that loads and runs the ONNX language classification model. This provides a persistent, extension-controlled execution context so the model does not need to be loaded independently on every webpage. The worker allows language analysis to be shared across pages while avoiding repeated model initialization and reducing memory and processing overhead.
