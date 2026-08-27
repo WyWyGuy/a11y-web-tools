@@ -1,3 +1,5 @@
+POPUP_LOADING_TIMEOUT = 5000;
+
 async function buildSupportEmail() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
@@ -35,16 +37,17 @@ Timestamp: ${diagnostics.timestamp}
 document.addEventListener("DOMContentLoaded", async () => {
     // Wait until the current page is finished loading
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab.status !== "complete") {
-        await new Promise(resolve => {
-            function listener(tabId, changeInfo) {
-                if (tabId === tab.id && changeInfo.status === "complete") {
-                    chrome.tabs.onUpdated.removeListener(listener);
-                    resolve();
-                }
-            }
-            chrome.tabs.onUpdated.addListener(listener);
-        });
+    if (tab?.id == null) {
+        console.error("No valid tab found.");
+        return;
+    }
+    const timeoutAt = Date.now() + POPUP_LOADING_TIMEOUT;
+    while (Date.now() < timeoutAt) {
+        const currentTab = await chrome.tabs.get(tab.id);
+        if (currentTab.status === "complete") {
+            break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 250));
     }
 
     await new Promise(resolve => setTimeout(resolve, 250));
