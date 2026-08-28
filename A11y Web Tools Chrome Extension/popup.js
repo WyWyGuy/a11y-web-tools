@@ -181,7 +181,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             <div class="footer">
                 <div class="footer"><i><a class="supportLink" title="Learn how to use A11y Web Tools" href="help.html?mac=${isMac}" target="_blank">How to Use</a>&nbsp&nbsp&nbsp|&nbsp&nbsp&nbsp<a class="supportLink" title="Contact Wyatt Nilsson" href="#" id="supportLink">Contact</a></i></div>
-                <div><i>&copy 2026 Wyatt Nilsson</i></div>
+                <div><i>Version ${chrome.runtime.getManifest().version} &middot; &copy; 2026 Wyatt Nilsson</i></div>
             </div>
         </div>
     `;
