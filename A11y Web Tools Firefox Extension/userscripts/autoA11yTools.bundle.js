@@ -257,13 +257,13 @@
             overlayContainer.dataset.tool = toolKey;
             document.body.appendChild(overlayContainer);
           }
-          let scanTimer = null;
+          overlayContainer._scanTimer = null;
           let scanRunning = false;
           let scanPending = false;
           function requestScan() {
             scanPending = true;
-            clearTimeout(scanTimer);
-            scanTimer = setTimeout(runScan, 100);
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = setTimeout(runScan, 100);
           }
           function runScan() {
             if (scanRunning) return;
@@ -343,6 +343,10 @@
           if (overlayContainer._observer) {
             overlayContainer._observer.disconnect();
           }
+          if (overlayContainer._scanTimer) {
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = null;
+          }
           const observer = new MutationObserver(async (mutations) => {
             let shouldScan = false;
             for (const m of mutations) {
@@ -365,6 +369,10 @@
           const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
           if (overlayContainer) {
             if (overlayContainer._observer) overlayContainer._observer.disconnect();
+            if (overlayContainer._scanTimer) {
+              clearTimeout(overlayContainer._scanTimer);
+              overlayContainer._scanTimer = null;
+            }
             overlayContainer.remove();
           }
           document.querySelectorAll("img").forEach((img) => {
@@ -420,13 +428,13 @@
 <span style="color:${ariaDescColor}">${ariaDescEmoji} Aria-description: ${escapeHtml(ariaDesc)}${escapeHtml(ariaDescFrom)}</span>
 <span style="color:${titleColor}">${titleEmoji} Title: ${escapeHtml(title)}</span>`;
           }
-          let scanTimer = null;
+          overlayContainer._scanTimer = null;
           let scanRunning = false;
           let scanPending = false;
           function requestScan() {
             scanPending = true;
-            clearTimeout(scanTimer);
-            scanTimer = setTimeout(runScan, 100);
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = setTimeout(runScan, 100);
           }
           function runScan() {
             if (scanRunning) return;
@@ -515,6 +523,10 @@
           if (overlayContainer._observer) {
             overlayContainer._observer.disconnect();
           }
+          if (overlayContainer._scanTimer) {
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = null;
+          }
           const observer = new MutationObserver(async (mutations) => {
             let shouldScan = false;
             for (const m of mutations) {
@@ -537,6 +549,10 @@
           const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
           if (overlayContainer) {
             if (overlayContainer._observer) overlayContainer._observer.disconnect();
+            if (overlayContainer._scanTimer) {
+              clearTimeout(overlayContainer._scanTimer);
+              overlayContainer._scanTimer = null;
+            }
             overlayContainer.remove();
           }
           document.querySelectorAll("iframe").forEach((f) => {
@@ -566,13 +582,13 @@
             overlayContainer.dataset.tool = toolKey;
             document.body.appendChild(overlayContainer);
           }
-          let scanTimer = null;
+          overlayContainer._scanTimer = null;
           let scanRunning = false;
           let scanPending = false;
           function requestScan() {
             scanPending = true;
-            clearTimeout(scanTimer);
-            scanTimer = setTimeout(runScan, 100);
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = setTimeout(runScan, 100);
           }
           function runScan() {
             if (scanRunning) return;
@@ -649,6 +665,10 @@
           if (overlayContainer._observer) {
             overlayContainer._observer.disconnect();
           }
+          if (overlayContainer._scanTimer) {
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = null;
+          }
           const observer = new MutationObserver(async (mutations) => {
             let shouldScan = false;
             for (const m of mutations) {
@@ -671,6 +691,10 @@
           const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
           if (overlayContainer) {
             if (overlayContainer._observer) overlayContainer._observer.disconnect();
+            if (overlayContainer._scanTimer) {
+              clearTimeout(overlayContainer._scanTimer);
+              overlayContainer._scanTimer = null;
+            }
             overlayContainer.remove();
           }
           document.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((h) => {
@@ -703,13 +727,13 @@
           function hasText(el) {
             return Array.from(el.childNodes).filter((n) => n.nodeType === Node.TEXT_NODE).map((n) => n.textContent.trim()).join("").length > 0;
           }
-          let scanTimer = null;
+          overlayContainer._scanTimer = null;
           let scanRunning = false;
           let scanPending = false;
           function requestScan() {
             scanPending = true;
-            clearTimeout(scanTimer);
-            scanTimer = setTimeout(runScan, 100);
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = setTimeout(runScan, 100);
           }
           function runScan() {
             if (scanRunning) return;
@@ -774,6 +798,10 @@
           if (overlayContainer._observer) {
             overlayContainer._observer.disconnect();
           }
+          if (overlayContainer._scanTimer) {
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = null;
+          }
           const observer = new MutationObserver(async (mutations) => {
             let shouldScan = false;
             for (const m of mutations) {
@@ -796,6 +824,10 @@
           const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
           if (overlayContainer) {
             if (overlayContainer._observer) overlayContainer._observer.disconnect();
+            if (overlayContainer._scanTimer) {
+              clearTimeout(overlayContainer._scanTimer);
+              overlayContainer._scanTimer = null;
+            }
             overlayContainer.remove();
           }
           document.querySelectorAll("i, b").forEach((el) => {
@@ -1034,13 +1066,13 @@
             }
             return "#" + values.slice(0, 3).map((value) => Number(value).toString(16).padStart(2, "0")).join("").toUpperCase();
           }
-          let scanTimer = null;
+          overlayContainer._scanTimer = null;
           let scanRunning = false;
           let scanPending = false;
           function requestScan() {
             scanPending = true;
-            clearTimeout(scanTimer);
-            scanTimer = setTimeout(runScan, 100);
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = setTimeout(runScan, 100);
           }
           function runScan() {
             if (scanRunning) return;
@@ -1205,6 +1237,10 @@
           if (overlayContainer._observer) {
             overlayContainer._observer.disconnect();
           }
+          if (overlayContainer._scanTimer) {
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = null;
+          }
           if (overlayContainer._container && overlayContainer._linkHandler) {
             overlayContainer._container.removeEventListener("pointerover", overlayContainer._linkHandler);
             overlayContainer._container.removeEventListener("pointerout", overlayContainer._linkHandler);
@@ -1247,6 +1283,10 @@
           if (overlayContainer) {
             if (overlayContainer._observer) {
               overlayContainer._observer.disconnect();
+            }
+            if (overlayContainer._scanTimer) {
+              clearTimeout(overlayContainer._scanTimer);
+              overlayContainer._scanTimer = null;
             }
             if (overlayContainer._container && overlayContainer._linkHandler) {
               overlayContainer._container.removeEventListener("pointerover", overlayContainer._linkHandler);
@@ -1446,13 +1486,13 @@
               updateEntry(entry);
             }
           }
-          let scanTimer = null;
+          overlayContainer._scanTimer = null;
           let scanRunning = false;
           let scanPending = false;
           function requestScan() {
             scanPending = true;
-            clearTimeout(scanTimer);
-            scanTimer = setTimeout(runScan, 100);
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = setTimeout(runScan, 100);
           }
           async function runScan() {
             if (scanRunning) return;
@@ -1674,7 +1714,7 @@
           }
           overlayContainer.remove();
         }
-        function runTableOverlay(container) {
+        async function runTableOverlay(container) {
           const tool = TOOLS.TABLE;
           const toolKey = tool.key;
           let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
@@ -1712,20 +1752,20 @@
             });
             return issues;
           }
-          let scanTimer = null;
+          overlayContainer._scanTimer = null;
           let scanRunning = false;
           let scanPending = false;
           function requestScan() {
             scanPending = true;
-            clearTimeout(scanTimer);
-            scanTimer = setTimeout(runScan, 100);
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = setTimeout(runScan, 100);
           }
-          function runScan() {
+          async function runScan() {
             if (scanRunning) return;
             scanRunning = true;
             scanPending = false;
             try {
-              scanTables();
+              await scanTables();
             } finally {
               scanRunning = false;
               if (scanPending) {
@@ -1733,20 +1773,19 @@
               }
             }
           }
-          function scanTables() {
+          const tableHeaderSetting = await getSetting("tableHeaders");
+          async function scanTables() {
             const tables = container.querySelectorAll("table");
             tables.forEach((table) => {
               if (table.closest(".AccessibilityHelper")) return;
               if (table._a11yTableProcessed) return;
-              (async () => {
-                if (await getSetting("tableHeaders")) {
-                  const headers = table.querySelectorAll("th");
-                  headers.forEach((th) => {
-                    th.style.outline = "2px solid rgba(255, 128, 0, 0.6)";
-                    th.style.outlineOffset = "-2px";
-                  });
-                }
-              })();
+              if (tableHeaderSetting) {
+                const headers = table.querySelectorAll("th");
+                headers.forEach((th) => {
+                  th.style.outline = "2px solid rgba(255, 128, 0, 0.6)";
+                  th.style.outlineOffset = "-2px";
+                });
+              }
               table._a11yTableProcessed = true;
               const issues = analyzeTableForA11yIssues(table);
               if (issues.length === 0) return;
@@ -1805,9 +1844,13 @@
               updateFunctions.push(updatePositions);
             });
           }
-          scanTables();
+          await scanTables();
           if (overlayContainer._observer) {
             overlayContainer._observer.disconnect();
+          }
+          if (overlayContainer._scanTimer) {
+            clearTimeout(overlayContainer._scanTimer);
+            overlayContainer._scanTimer = null;
           }
           const observer = new MutationObserver(async (mutations) => {
             let shouldScan = false;
@@ -1831,6 +1874,10 @@
           const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
           if (overlayContainer) {
             if (overlayContainer._observer) overlayContainer._observer.disconnect();
+            if (overlayContainer._scanTimer) {
+              clearTimeout(overlayContainer._scanTimer);
+              overlayContainer._scanTimer = null;
+            }
             overlayContainer.remove();
           }
           document.querySelectorAll("table").forEach((table) => {
