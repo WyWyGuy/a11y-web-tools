@@ -25,16 +25,17 @@
                 position:absolute;
                 white-space:nowrap;
                 font-size:12px;
-                z-index:10001;
+                z-index:9994;
                 color:black;
                 transition:all 0.2s ease;
                 display:none;
+                align-items: center;
             }
             .AccessibilityModule-border {
                 position:absolute;
                 border:3px solid #CCC;
                 border-radius:4px;
-                z-index:9999;
+                z-index:9996;
                 pointer-events:none;
                 transition:all 0.2s ease;
                 display:none;
@@ -42,6 +43,18 @@
             .AccessibilityModule-highlight {
                 border-color:#393!important;
                 box-shadow:1px 2px 5px #CCC;
+            }
+            .open-all-links {
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 0;
+                font-size: 12px;
+                margin-left: 8px;
+                color: #0073e6;
+                text-decoration: underline;
+                display: flex;
+                align-items: center;
             }
         `;
         document.head.appendChild(s);
@@ -56,14 +69,20 @@
     }
 
     // Select all target divs
-    const modules = [...document.querySelectorAll('div.context_module.editable_context_module')];
+    const modules = [...document.querySelectorAll('div.context_module')];
+
+    const moduleElements = [];
 
     modules.forEach((mod, i) => {
         const label = document.createElement('div');
         label.className = 'AccessibilityModule AccessibilityModule-label';
-        label.innerHTML = `Module ${i + 1} (<u class="open-all-links" style="cursor:pointer;color:#0066cc;">Open all pages</u>)`;
+        label.textContent = `Module ${i + 1}`;
 
-        const openAllBtn = label.querySelector('.open-all-links');
+        const openAllBtn = document.createElement('button');
+        openAllBtn.type = 'button';
+        openAllBtn.className = 'open-all-links';
+        openAllBtn.textContent = 'Open all pages';
+        label.appendChild(openAllBtn);
 
         openAllBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -80,12 +99,20 @@
 
             links.forEach(link => {
                 const href = link.href;
-
-                // Safety checks
                 if (!href) return;
-                if (href.startsWith('javascript:')) return;
+                let url;
+                try {
+                    url = new URL(href);
+                } catch (error) {
+                    console.warn('Invalid module link:', href, error);
+                    return;
+                }
+                if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
-                window.open(href, '_blank', 'noopener');
+                const newWindow = window.open(href, '_blank', 'noopener');
+                if (!newWindow) {
+                    console.warn('Popup blocked for link:', href);
+                }
             });
         });
 
@@ -96,10 +123,28 @@
         document.body.appendChild(label);
         document.body.appendChild(border);
 
-        function update() {
+        function hi() {
+            label.classList.add('AccessibilityModule-highlight');
+            border.classList.add('AccessibilityModule-highlight');
+        }
+        function un() {
+            label.classList.remove('AccessibilityModule-highlight');
+            border.classList.remove('AccessibilityModule-highlight');
+        }
+
+        label.addEventListener('pointerenter', hi);
+        label.addEventListener('pointerleave', un);
+        mod.addEventListener('pointerenter', hi);
+        mod.addEventListener('pointerleave', un);
+
+        moduleElements.push({mod, label, border});
+    });
+
+    function updateAll() {
+        for (const { mod, label, border } of moduleElements) {
             const r = mod.getBoundingClientRect();
             if (isVisible(mod)) {
-                label.style.display = 'block';
+                label.style.display = 'flex';
                 border.style.display = 'block';
                 const top = window.scrollY + r.top;
                 const left = window.scrollX + r.left;
@@ -114,29 +159,29 @@
                 border.style.display = 'none';
             }
         }
+    }
 
-        function hi() {
-            label.classList.add('AccessibilityModule-highlight');
-            border.classList.add('AccessibilityModule-highlight');
-        }
-        function un() {
-            label.classList.remove('AccessibilityModule-highlight');
-            border.classList.remove('AccessibilityModule-highlight');
-        }
+    let updateScheduled = false;
+    function scheduleUpdate() {
+        if (updateScheduled) return;
+        updateScheduled = true;
 
-        label.addEventListener('mouseover', hi);
-        label.addEventListener('mouseout', un);
-        mod.addEventListener('mouseover', hi);
-        mod.addEventListener('mouseout', un);
-
-        update();
-        window.addEventListener('scroll', update);
-        window.addEventListener('resize', update);
-        new MutationObserver(update).observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['style','class','hidden','open']
+        requestAnimationFrame(() => {
+            updateScheduled = false;
+            updateAll();
         });
+    }
+
+    updateAll();
+
+    window.addEventListener('scroll', scheduleUpdate);
+    window.addEventListener('resize', scheduleUpdate);
+
+    new MutationObserver(scheduleUpdate).observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style','class','hidden','open']
     });
+
 })();

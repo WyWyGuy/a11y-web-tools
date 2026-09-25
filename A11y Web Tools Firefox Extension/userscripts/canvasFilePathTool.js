@@ -8,17 +8,20 @@
         return;
     }
 
+    const API_BASE = "/api/v1";
+    const MAX_FOLDER_DEPTH = 20;
     const folderCache = new Map();
     const fileCache = new Map();
-
-    const API_BASE = "/api/v1";
 
     // Helpers
     async function apiFetch(url) {
         const res = await fetch(url, {
             credentials: "same-origin"
         });
-        return res.json();
+        if (!res.ok) {
+            throw new Error(`Canvas API request failed: ${res.status} ${res.statusText}`);
+        }
+        return await res.json();
     }
 
     function extractFileId(link) {
@@ -35,38 +38,57 @@
     // Folder path logic
     async function getFolder(folderId) {
         if (folderCache.has(folderId)) {
-            return folderCache.get(folderId);
+            return await folderCache.get(folderId);
         }
 
-        const data = await apiFetch(`${API_BASE}/folders/${folderId}`);
-        folderCache.set(folderId, data);
-        return data;
+        const promise = apiFetch(`${API_BASE}/folders/${folderId}`);
+        folderCache.set(folderId, promise);
+
+        try {
+            return await promise;
+        } catch (error) {
+            folderCache.delete(folderId);
+            throw error;
+        }
     }
 
-    async function resolveFolderPath(folderId) {
-        const parts = [];
-
-        let current = folderId;
-
-        while (current) {
-            const folder = await getFolder(current);
-
-            parts.unshift(folder.name);
-            current = folder.parent_folder_id;
-
-            // safety break
-            if (parts.length > 20) break;
+    async function getFileInfo(fileId) {
+        if (fileCache.has(fileId)) {
+            return await fileCache.get(fileId);
         }
 
-        return parts.join(" / ");
+        const promise = apiFetch(`${API_BASE}/files/${fileId}`);
+
+        fileCache.set(fileId, promise);
+
+        try {
+            return await promise;
+        } catch (error) {
+            fileCache.delete(fileId);
+            throw error;
+        }
     }
 
     async function getFolderPath(folderId) {
         const segments = [];
+        const visited = new Set();
         let current = folderId;
+        let depth = 0;
 
         while (current) {
+            if (visited.has(current)) {
+                throw new Error(`Circular folder hierarchy detected at folder ${current}.`);
+            }
+            if (depth++ >= MAX_FOLDER_DEPTH) {
+                throw new Error(`Folder hierarchy exceeded maximum depth of ${MAX_FOLDER_DEPTH}.`);
+            }
+
+            visited.add(current);
             const folder = await getFolder(current);
+            if (!folder || typeof folder.name !== "string") {
+                throw new Error(`Canvas returned invalid folder data for folder ${current}.`);
+            }
+
             segments.unshift(folder.name);
             current = folder.parent_folder_id;
         }
@@ -80,84 +102,83 @@
     }
 
     function buildFolderUrlFromSegments(segments, courseId) {
+        if (!courseId) return null;
         const pathUrl = segments.map(encodeURIComponent).join("/");
         return `/courses/${courseId}/files/folder/${pathUrl}`;
     }
 
-    // File info helper
-    async function getFileInfo(fileId) {
-        if (fileCache.has(fileId)) {
-            return fileCache.get(fileId);
-        }
+    function createFolderLink(folderUrl) {
+        if (!folderUrl) return null;
 
-        const file = await apiFetch(`${API_BASE}/files/${fileId}`);
-        fileCache.set(fileId, file);
-        return file;
+        const folderLink = document.createElement("a");
+        folderLink.href = folderUrl;
+        folderLink.textContent = "📁 Open Folder";
+        folderLink.style.fontSize = "0.8em";
+        folderLink.style.marginLeft = "0.5em";
+        folderLink.target = "_blank";
+        folderLink.rel = "noopener noreferrer";
+        folderLink.style.whiteSpace = "nowrap";
+        folderLink.classList.add("canvas-folder-link");
+        folderLink.style.position = "absolute";
+        folderLink.style.left = "55px";
+        folderLink.style.top = "82%";
+        folderLink.style.transform = "translateY(-50%)";
+        folderLink.style.textDecoration = "none";
+        folderLink.addEventListener("pointerenter", () => {
+            folderLink.style.textDecoration = "underline";
+        });
+
+        folderLink.addEventListener("pointerleave", () => {
+            folderLink.style.textDecoration = "none";
+        });
+
+        return folderLink;
     }
 
     // Hover handler
     async function handleHover(e) {
-        const link = e.target.closest("a[href*='/files']");
-        if (!link) return;
-
-        const fileId = extractFileId(link);
-        if (!fileId) return;
-
         try {
-            const file = await getFileInfo(fileId);
-            const folderPath = await resolveFolderPath(file.folder_id);
+            if (!(e.target instanceof Element)) return;
+            
+            const link = e.target.closest("a[href*='/files']");
+            if (!link) return;
 
-            const fullPath = `${folderPath} / ${file.display_name}`;
+            const fileId = extractFileId(link);
+            if (!fileId) return;
+
+            const file = await getFileInfo(fileId);
+            if (!file || !file.folder_id) return;
+
+            const courseId = getCourseId();
+            if (!courseId) {
+                console.warn("Canvas File Path Tool: Unable to determine course ID.");
+                return;
+            }
+
+            const segments = await getFolderPath(file.folder_id);
+            const folderPath = segments.join(" / ");
+            const fullPath = folderPath ? `${folderPath} / ${file.display_name}` : file.display_name;
 
             link.title = fullPath;
 
-            link.style.position = "relative";
+            const cell = link.closest("td");
+            if (!cell) return;
 
-            if (file.folder_id) {
-                const courseId = getCourseId();
-                const segments = await getFolderPath(file.folder_id);
-                const folderUrl = buildFolderUrlFromSegments(segments, courseId);
+            if (cell.querySelector(".canvas-folder-link")) return;
 
-                let folderLink = document.createElement("a");
-                folderLink.href = folderUrl;
-                folderLink.textContent = "📁 Open Folder";
-                folderLink.style.fontSize = "0.8em";
-                folderLink.style.marginLeft = "0.5em";
-                folderLink.target = "_blank";
+            cell.style.position = "relative";
 
-                const cell = link.closest("td");
-                if (!cell) return;
+            const folderUrl = buildFolderUrlFromSegments(segments, courseId);
+            const folderLink = createFolderLink(folderUrl);
+            if (!folderLink) return;
 
-                if (cell.querySelector(".canvas-folder-link")) return;
-
-                cell.style.position = "relative";
-
-                folderLink.classList.add("canvas-folder-link");
-                folderLink.style.position = "absolute";
-                folderLink.style.left = "55px";
-                folderLink.style.top = "82%";
-                folderLink.style.transform = "translateY(-50%)";
-                folderLink.style.fontSize = "0.8em";
-                folderLink.style.textDecoration = "none";
-                folderLink.style.whiteSpace = "nowrap";
-
-                folderLink.addEventListener("mouseenter", () => {
-                    folderLink.style.textDecoration = "underline";
-                });
-
-                folderLink.addEventListener("mouseleave", () => {
-                    folderLink.style.textDecoration = "none";
-                });
-
-                cell.appendChild(folderLink);
-            }
-
-        } catch (err) {
-            console.warn("Canvas File Path Tool failed:", err);
+            cell.appendChild(folderLink);
+        } catch (error) {
+            console.warn("Canvas File Path Tool failed:", error);
         }
     }
 
     // Start
-    document.addEventListener("mouseover", handleHover, true);
+    document.addEventListener("pointerenter", handleHover, true);
 
 })();

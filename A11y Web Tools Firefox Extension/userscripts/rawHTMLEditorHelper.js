@@ -2,15 +2,16 @@
     "use strict";
 
     async function getSetting(request) {
-        return new Promise(async resolve => {
-            await chrome.runtime.sendMessage({ action: 'getSetting', value: request }, resolve);
-        });
+        try {
+            return await chrome.runtime.sendMessage({
+                action: 'getSetting',
+                value: request
+            });
+        } catch (error) {
+            console.warn(`Unable to get setting "${request}":`, error);
+            return null;
+        }
     }
-
-    // Load settings
-    const EDITOR_HIGHLIGHTS = await getSetting("editorHighlights");
-    const EXPAND_EDITOR = await getSetting("expandEditBoxes");
-    let autoSwitch = await getSetting("defaultEditor");
 
     // Only run on edit pages and question bank pages
     const path = location.pathname;
@@ -19,6 +20,11 @@
     if (!isEditPage && !isQuestionBank) {
         return;
     }
+
+    // Load settings
+    const EDITOR_HIGHLIGHTS = await getSetting("editorHighlights") === true;
+    const EXPAND_EDITOR = await getSetting("expandEditBoxes") === true;
+    let autoSwitch = await getSetting("defaultEditor") === true;
 
     const SEARCH_PATTERNS = [
         { regex: /aria-label=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(0, 255, 90, 0.35);" },
@@ -53,7 +59,11 @@
     function clickIfEligible(el) {
         if (!el || clicked.has(el)) return;
         clicked.add(el);
-        setTimeout(() => el.click(), 250);
+        setTimeout(() => {
+            if (el.isConnected) {
+                el.click();
+            }
+        }, 250);
     }
 
     function scanForButtons(root = document) {
@@ -89,22 +99,19 @@
 
     const rawButtonObserver = new MutationObserver(mutations => {
         for (const m of mutations) {
-            if (m.addedNodes) {
+            if (m.type === "childList") {
                 for (const node of m.addedNodes) {
-                    if (node.nodeType === 1) {
-                        scanForButtons(node);
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        scanForButtons(node.parentElement ?? node);
                     }
                 }
             }
         }
     });
-
     rawButtonObserver.observe(document.documentElement, {
         childList: true,
         subtree: true
     });
-
-    setInterval(scanForButtons, 500);
 
     // Helper functions
     function escapeHtml(str) {
@@ -137,7 +144,7 @@
             overlay.style.display = "flex";
             overlay.style.alignItems = "center";
             overlay.style.justifyContent = "center";
-            overlay.style.zIndex = 9999;
+            overlay.style.zIndex = 999999999;
 
             const modal = document.createElement("div");
             modal.style.backgroundColor = "#fff";
@@ -187,10 +194,19 @@
                 modal.appendChild(optionDiv);
             });
 
-            const iframe = document.createElement("iframe");
-            iframe.src = decodeHtml(src);
-            iframe.style.maxHeight = "200px";
-            modal.appendChild(iframe);
+            if (src) {
+                const iframe = document.createElement("iframe");
+                try {
+                    const previewUrl = new URL(decodeHtml(src), location.href);
+                    if (previewUrl.protocol === "https:" || previewUrl.protocol === "http:") {
+                        iframe.src = previewUrl.href;
+                        iframe.style.maxHeight = "200px";
+                        modal.appendChild(iframe);
+                    }
+                } catch (error) {
+                    console.warn("Invalid iframe preview URL:", error);
+                }
+            }
 
             const inputLabel = document.createElement("div");
             inputLabel.innerHTML = "<br>Type accessible aria-label:";
@@ -232,7 +248,11 @@
                 if (e.target === overlay) e.stopPropagation();
             });
 
-            function cleanup() { document.body.removeChild(overlay); }
+            function cleanup() {
+                if (overlay.isConnected) {
+                    overlay.remove();
+                }
+            }
         });
     }
 
@@ -278,12 +298,13 @@
 
         const iframeRegex = /<iframe\b([^>]*)>/gi;
         let match;
-        let newHTML = before;
         const matches = [];
 
         while ((match = iframeRegex.exec(before)) !== null) {
             matches.push({ fullMatch: match[0], attrs: match[1], index: match.index });
         }
+
+        const replacements = [];
 
         for (const item of matches) {
             const { fullMatch, attrs } = item;
@@ -347,10 +368,22 @@
             if (newLabel) newAttrs += ` aria-label="${escapeHtml(newLabel)}"`;
 
             if (newLabel && newLabel.trim() !== "") {
-                newHTML = newHTML.replace(fullMatch, `<iframe ${newAttrs}>`);
+                replacements.push({
+                    start: item.index,
+                    end: item.index + fullMatch.length,
+                    replacement: `<iframe ${newAttrs}>`
+                });
             }
         }
 
+        let newHTML = "";
+        let lastIndex = 0;
+        for (const replacement of replacements) {
+            newHTML += before.slice(lastIndex, replacement.start);
+            newHTML += replacement.replacement;
+            lastIndex = replacement.end;
+        }
+        newHTML += before.slice(lastIndex);
         textarea.value = newHTML;
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
 
@@ -516,7 +549,7 @@
 
         searchBar.append(buttonLine, searchLine);
         (async () => {
-            if (await getSetting("extraEditorHelps")) {
+            if (await getSetting("extraEditorHelps") === true) {
                 wrapper.appendChild(searchBar);
             }
         })();
@@ -636,10 +669,20 @@
 
             searchState.term = searchInput.value;
             searchState.index = searchState.term ? 0 : -1;
-            syncOverlays();
+            scheduleSyncOverlays();
         }
 
         wrapper._focusSearchBox = focusSearchBox;
+
+        let syncScheduled = false;
+        function scheduleSyncOverlays() {
+            if (syncScheduled) return;
+            syncScheduled = true;
+            requestAnimationFrame(() => {
+                syncScheduled = false;
+                syncOverlays();
+            });
+        }
 
         function syncOverlays() {
             if (getComputedStyle(textarea).display === 'none') return;
@@ -712,38 +755,29 @@
         function jumpToMatch(dir) {
             if (!searchState.ranges.length) return;
             searchState.index = (searchState.index + dir + searchState.ranges.length) % searchState.ranges.length;
-            syncOverlays();
+            scheduleSyncOverlays();
             scrollToMatch(searchState.index, true);
         }
 
         // Overlay update listeners
-        textarea.addEventListener("input", syncOverlays);
+        textarea.addEventListener("input", scheduleSyncOverlays);
         textarea.addEventListener("scroll", overlaysScrollSync);
-        textarea.addEventListener("focus", syncOverlays);
-        textarea.addEventListener("mouseenter", syncOverlays);
+        textarea.addEventListener("focus", scheduleSyncOverlays);
+        textarea.addEventListener("pointerenter", scheduleSyncOverlays);
 
-        textarea.addEventListener("mouseenter", syncAllOverlayWidths);
+        textarea.addEventListener("pointerenter", syncAllOverlayWidths);
         textarea.addEventListener("focus", syncAllOverlayWidths);
 
         searchInput.addEventListener("input", () => {
             searchState.term = searchInput.value;
             searchState.index = searchState.term ? 0 : -1;
-            syncOverlays();
+            scheduleSyncOverlays();
             if (searchState.index !== -1) scrollToMatch(searchState.index, false);
         });
         prevBtn.addEventListener("click", () => jumpToMatch(-1));
         nextBtn.addEventListener("click", () => jumpToMatch(1));
 
-        new ResizeObserver(() => syncOverlays()).observe(textarea);
-
-        function globalCtrlFHandler(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
-                if (!wrapper.isConnected) return;
-
-                e.preventDefault();
-                focusSearchBox();
-            }
-        }
+        new ResizeObserver(() => scheduleSyncOverlays()).observe(textarea);
 
         // Initial sync
         syncOverlays();
@@ -779,7 +813,7 @@
     }
 
     // Key capture
-    if (await getSetting("extraEditorHelps")) {
+    if (await getSetting("extraEditorHelps") === true) {
         document.addEventListener("keydown", e => {
             if (!(e.ctrlKey || e.metaKey)) return;
             if (e.key.toLowerCase() !== "f" && e.key.toLowerCase() !== "s") return;
@@ -787,6 +821,7 @@
             if (e.key.toLowerCase() === "f") {
 
                 const active = document.activeElement;
+                if (!(active instanceof Element)) return;
 
                 // Case 1: Cursor is inside textarea
                 if (active && active.tagName === "TEXTAREA") {

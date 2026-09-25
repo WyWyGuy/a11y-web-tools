@@ -32,7 +32,7 @@ The code that spawns the AI language prediction model and receives requests for 
 
 ### `content.js`
 
-The content JavaScript code that helps for temporary local settings.
+The content JavaScript code that helps for temporary runtime settings.
 
 ### `help.html`
 
@@ -45,6 +45,14 @@ The JavaScript that runs on the `help.html` page.
 ### `language_model.onnx` or `language_model_compact.onnx`
 
 A custom AI model used to predict the language of given text.
+
+### `englishWords.txt`
+
+A local copy of the dictionary of English words used by the language tool.
+
+### `product-description.txt`
+
+A copy of the product information for publishing on web stores.
 
 ### `ATTRIBUTIONS.md`
 

@@ -12,7 +12,6 @@
             margin: 0px;
             scrollbar-color: #ccc rgba(0, 0, 0, 0);
             scrollbar-width: thin;
-            scroll-behavior: smooth;
             font-family: Arial, Helvetica, sans-serif;
         }
 
@@ -26,7 +25,6 @@
         .subTitle {
             font-weight: normal;
             font-family: Arial, Helvetica, sans-serif;
-            margin-top: 8px;
             margin-top: 4px;
         }
 
@@ -68,11 +66,11 @@
             position: relative;
         }
 
-        .menuButton:hover {
+        .menuButton:not(:disabled):hover {
             filter: brightness(0.90);
         }
 
-        .menuButton:active {
+        .menuButton:not(:disabled):active {
             filter: brightness(0.75);
         }
 
@@ -237,24 +235,24 @@
         <hr class="separator" />
 
         <div class="evenSpacing">
-            <button class="menuButton green" title="Activate all a11y web tools" id="activateAllA11yTools"><img class="buttonImg" src="images/all.svg" /></button>
-            <button class="menuButton red" title="Deactivate all a11y web tools" id="deactivateAllA11yTools"><img class="buttonImg" src="images/none.svg" /></button>
+            <button class="menuButton green" title="Activate all a11y web tools" id="activateAllA11yTools"><img class="buttonImg" src="images/all.svg" alt="" /></button>
+            <button class="menuButton red" title="Deactivate all a11y web tools" id="deactivateAllA11yTools"><img class="buttonImg" src="images/none.svg" alt="" /></button>
         </div>
 
         <div class="lineBreak"></div>
 
         <div class="evenSpacing">
-            <button class="menuButton" title="Toggle image overlays" id="toggleImageOverlays"><img class="buttonImg" src="images/image.svg" /></button>
-            <button class="menuButton" title="Toggle iframe overlays" id="toggleIframeOverlays"><img class="buttonImg" src="images/iframe.svg" /></button>
-            <button class="menuButton" title="Toggle heading overlays" id="toggleHeadingOverlays"><img class="buttonImg" src="images/heading.svg" /></button>
+            <button class="menuButton" title="Toggle image overlays" id="toggleImageOverlays"><img class="buttonImg" src="images/image.svg" alt="" /></button>
+            <button class="menuButton" title="Toggle iframe overlays" id="toggleIframeOverlays"><img class="buttonImg" src="images/iframe.svg" alt="" /></button>
+            <button class="menuButton" title="Toggle heading overlays" id="toggleHeadingOverlays"><img class="buttonImg" src="images/heading.svg" alt="" /></button>
         </div>
 
         <div class="lineBreak"></div>
 
         <div class="evenSpacing">
-            <button class="menuButton" title="Toggle table issue overlays" id="toggleTableOverlays"><img class="buttonImg" src="images/table.svg" /></button>
-            <button class="menuButton" title="Toggle contrast issue highlighting" id="toggleContrastHighlights"><img class="buttonImg" src="images/color.svg" /></button>
-            <button class="menuButton" title="Toggle potential lang tag issue highlighting" id="toggleLangTagHighlights"><img class="buttonImg" src="images/lang.svg" /></button>
+            <button class="menuButton" title="Toggle table issue overlays" id="toggleTableOverlays"><img class="buttonImg" src="images/table.svg" alt="" /></button>
+            <button class="menuButton" title="Toggle contrast issue highlighting" id="toggleContrastHighlights"><img class="buttonImg" src="images/color.svg" alt="" /></button>
+            <button class="menuButton" title="Toggle potential lang tag issue highlighting" id="toggleLangTagHighlights"><img class="buttonImg" src="images/lang.svg" alt="" /></button>
         </div>
 
         <div class="lineBreak"></div>
@@ -263,9 +261,9 @@
 
         <h2 class="subTitle">Count Elements</h2>
         <div class="evenSpacing">
-            <button class="menuButton" title="Toggle table counting overlays" id="toggleTableCounting"><img class="buttonImg" src="images/table.svg" /></button>
-            <button class="menuButton" title="Toggle iframe counting overlays" id="toggleIframeCounting"><img class="buttonImg" src="images/iframe.svg" /></button>
-            <button class="menuButton" title="Toggle paragraph counting overlays" id="toggleParagraphCounting"><img class="buttonImg" src="images/paragraph.svg" /></button>
+            <button class="menuButton" title="Toggle table counting overlays" id="toggleTableCounting"><img class="buttonImg" src="images/table.svg" alt="" /></button>
+            <button class="menuButton" title="Toggle iframe counting overlays" id="toggleIframeCounting"><img class="buttonImg" src="images/iframe.svg" alt="" /></button>
+            <button class="menuButton" title="Toggle paragraph counting overlays" id="toggleParagraphCounting"><img class="buttonImg" src="images/paragraph.svg" alt="" /></button>
         </div>
 
         <div class="lineBreak"></div>
@@ -273,15 +271,15 @@
         <hr class="separator" />
 
         <div class="evenSpacing">
-            <button class="menuButton" title="Use raw HTML editor by default" id="toggleDefaultEditor"><img class="buttonImg" src="images/coding.svg" /></button>
-            <button class="menuButton" title="Open dropdown menus by default" id="toggleDefaultDropdownMenus"><img class="buttonImg" src="images/dropdown.svg" /></button>
+            <button class="menuButton" title="Use raw HTML editor by default" id="toggleDefaultEditor"><img class="buttonImg" src="images/coding.svg" alt="" /></button>
+            <button class="menuButton" title="Open dropdown menus by default" id="toggleDefaultDropdownMenus"><img class="buttonImg" src="images/dropdown.svg" alt="" /></button>
         </div>
 
         <div class="lineBreak"></div>
 
         <div class="evenSpacing">
-            <button class="menuButton" title="Toggle color contrast inspector" id="toggleContrastInspector"><img class="buttonImg" src="images/cursor.svg" /></button>
-            <button class="menuButton" title="Download SLA files" id="downloadSLAFiles"><img class="buttonImg" src="images/spreadsheet.svg" /></button>
+            <button class="menuButton" title="Toggle color contrast inspector" id="toggleContrastInspector"><img class="buttonImg" src="images/cursor.svg" alt="" /></button>
+            <button class="menuButton" title="Download SLA files" id="downloadSLAFiles"><img class="buttonImg" src="images/spreadsheet.svg" alt="" /></button>
         </div>
 
         <div class="lineBreak"></div>

@@ -23,21 +23,27 @@
         return new Promise((resolve, reject) => {
             const selector = `${tagName}[${attributeName}="${attributeValue}"]`;
             const existing = document.querySelector(selector);
-            if (existing) {
-                return resolve(existing);
-            }
-            const observer = new MutationObserver((mutations, obs) => {
+            if (existing) return resolve(existing);
+            let timeoutId;
+            const observer = new MutationObserver((_, obs) => {
                 const found = document.querySelector(selector);
                 if (found) {
                     obs.disconnect();
+                    clearTimeout(timeoutId);
                     resolve(found);
                 }
             });
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-            setTimeout(() => {
+            if (!document.body) {
+                reject(new Error("A11y Web Tools: Document body is unavailable."));
+                return;
+            }
+            try {
+                observer.observe(document.body, { childList: true, subtree: true });
+            } catch (error) {
+                reject(error);
+                return;
+            }
+            timeoutId = setTimeout(() => {
                 observer.disconnect();
                 reject(new Error(`A11y Web Tools: Timeout: <${tagName}> with ${attributeName}="${attributeValue}" not found within ${timeout}ms`));
             }, timeout);
@@ -53,15 +59,26 @@
             };
             const existing = check();
             if (existing) return resolve(existing);
+            let timeoutId;
             const observer = new MutationObserver((_, obs) => {
                 const found = check();
                 if (found) {
                     obs.disconnect();
+                    clearTimeout(timeoutId);
                     resolve(found);
                 }
             });
-            observer.observe(document.body, { childList: true, subtree: true });
-            setTimeout(() => {
+            if (!document.body) {
+                reject(new Error("A11y Web Tools: Document body is unavailable."));
+                return;
+            }
+            try {
+                observer.observe(document.body, { childList: true, subtree: true });
+            } catch (error) {
+                reject(error);
+                return;
+            }
+            timeoutId = setTimeout(() => {
                 observer.disconnect();
                 reject(new Error(`A11y Web Tools: Timeout: <${tagName}> with text "${text}" not found within ${timeout}ms`));
             }, timeout);
@@ -121,6 +138,7 @@
                         const mouseOverEvent = new MouseEvent('mouseover', {
                             bubbles: true,
                             cancelable: true,
+                            composed: true,
                         });
                         exportSpan.dispatchEvent(mouseOverEvent);
                     } else {
@@ -154,7 +172,9 @@
 
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (msg.action === 'downloadSLAFiles') {
-            downloadSLA();
+            downloadSLA().catch(error => {
+                console.warn("A11y Web Tools: SLA download failed:", error);
+            });
         }
     });
     
