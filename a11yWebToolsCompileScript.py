@@ -3,6 +3,7 @@ import os
 import json
 import subprocess
 import zipfile
+import urllib.request
 
 base = os.path.dirname(os.path.abspath(__file__))
 chrome_src = os.path.join(base, "A11y Web Tools Chrome Extension")
@@ -23,6 +24,11 @@ firefox_zip = os.path.join(
 
 env = os.environ.copy()
 env["PATH"] = node_dir + os.pathsep + env.get("PATH", "")
+
+# Dowload the latest dictionary file
+english_words_url = ("https://raw.githubusercontent.com/WyWyGuy/tampermonkey-a11y-tools/refs/heads/main/englishWords.txt")
+english_words_path = os.path.join(chrome_src, "englishWords.txt")
+urllib.request.urlretrieve(english_words_url, english_words_path)
 
 # Re-bundle the Chrome userscript
 subprocess.run(
@@ -83,12 +89,14 @@ for filename in ["offscreen.js", "offscreen.html", "language_model.onnx"]:
 background_js_path = os.path.join(firefox_src, "background.js")
 with open(background_js_path, "r", encoding="utf-8") as f:
     background_js = f.read()
-offscreen_start = background_js.find("// Function to load the offscreen document")
-if offscreen_start != -1:
-    offscreen_call = background_js.find("ensureOffscreenDocument();", offscreen_start)
-    if offscreen_call != -1:
-        offscreen_end = offscreen_call + len("ensureOffscreenDocument();")
-        background_js = (background_js[:offscreen_start] + background_js[offscreen_end:])
+
+offscreen_start_marker = "// Function to load the offscreen document"
+offscreen_end_marker = "// End function to load the offscreen document"
+offscreen_start = background_js.find(offscreen_start_marker)
+offscreen_end = background_js.find(offscreen_end_marker, offscreen_start)
+if offscreen_start != -1 and offscreen_end != -1:
+    offscreen_end += len(offscreen_end_marker)
+    background_js = (background_js[:offscreen_start] + background_js[offscreen_end:])
 
 # Make background.js work like offscreen did for Firefox
 firefox_model_code = r'''
@@ -168,7 +176,8 @@ def zip_project(source_dir, zip_path, excluded_files=None):
     excluded_files = {
         *excluded_files,
         "package.json",
-        "package-lock.json"
+        "package-lock.json",
+        "product-description.txt"
     }
     excluded_dirs = {
         "node_modules"
