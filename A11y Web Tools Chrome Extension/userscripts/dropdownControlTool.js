@@ -2,12 +2,18 @@
     'use strict';
 
     async function getSetting(request) {
-        return new Promise(async resolve => {
-            await chrome.runtime.sendMessage({ action: 'getSetting', value: request }, resolve);
-        });
+        try {
+            return await chrome.runtime.sendMessage({
+                action: 'getSetting',
+                value: request
+            });
+        } catch (error) {
+            console.warn(`Unable to get setting "${request}":`, error);
+            return null;
+        }
     }
 
-    let autoExpandEnabled = await getSetting('defaultDropdownMenus');
+    let autoExpandEnabled = await getSetting('defaultDropdownMenus') === true;
 
     const excludedPaths = [
         /^https:\/\/byu\.instructure\.com\/courses\/1026\/pages\/error-finding-checklist(?:.*)?$/,
@@ -47,15 +53,15 @@
         if (!autoExpandEnabled) return;
         if (excludedPaths.some(regex => regex.test(window.location.href))) return;
 
+        expandAll();
+
         let timeout = null;
         const observer = new MutationObserver(() => {
             clearTimeout(timeout);
             timeout = setTimeout(() => {
-                timeout = setTimeout(() => {
-                    expandAll();
-                }, 250);
+                expandAll();
                 observer.disconnect();
-            }, 1000);
+            }, 1250);
         });
         observer.observe(document.body, {
             childList: true,
@@ -64,13 +70,13 @@
     }
 
     (async () => {
-        if (await getSetting("dropdownHotkeys")) {
+        if (await getSetting("dropdownHotkeys") === true) {
             document.addEventListener('keydown', function(e) {
                 if (e.altKey && e.key === 'ArrowDown') {
                     e.preventDefault();
                     expandAll();
                 }
-                if (e.altKey && e.key === 'ArrowUp') {
+                else if (e.altKey && e.key === 'ArrowUp') {
                     e.preventDefault();
                     collapseAll();
                 }

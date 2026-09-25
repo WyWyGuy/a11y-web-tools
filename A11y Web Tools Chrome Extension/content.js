@@ -1,9 +1,11 @@
-const LOCAL_SETTINGS = {
+const RUNTIME_SETTINGS = {
     countTables: false,
     countIframes: false,
     countParagraphs: false,
-    contrastInspector: false,
+    contrastInspector: false
 }
+
+const RUNTIME_SETTING_KEYS = new Set(Object.keys(RUNTIME_SETTINGS));
 
 function customAlert(text) {
     const toast = document.createElement("div");
@@ -23,11 +25,16 @@ function customAlert(text) {
         textAlign: "center",
         maxWidth: "500px",
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
-        zIndex: "10000",
+        zIndex: "999999999",
         opacity: "0",
         transition: "opacity 0.3s ease",
         pointerEvents: "none"
     });
+
+    if (!document.body) {
+        console.error("Unable to create alert: document body is unavailable.");
+        return;
+    }
 
     document.body.appendChild(toast);
 
@@ -43,16 +50,33 @@ function customAlert(text) {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     switch (msg.action) {
-        case "getLocalSettings":
-            sendResponse({ ...LOCAL_SETTINGS });
+        case "getRuntimeSettings":
+            sendResponse({ ...RUNTIME_SETTINGS });
             break;
-        case "setSettingLocal":
-            LOCAL_SETTINGS[msg.key] = msg.value;
+        case "setSettingRuntime":
+            if (!RUNTIME_SETTING_KEYS.has(msg.key)) {
+                sendResponse({ success: false, error: "Invalid runtime setting key." });
+                return;
+            }
+            if (typeof msg.value !== "boolean") {
+                sendResponse({ success: false, error: "Invalid setting value." });
+                return;
+            }
+            RUNTIME_SETTINGS[msg.key] = msg.value;
+            sendResponse({ success: true });
             break;
-        case "getSettingLocal":
-            sendResponse(LOCAL_SETTINGS[msg.key]);
+        case "getSettingRuntime":
+            if (!RUNTIME_SETTING_KEYS.has(msg.key)) {
+                console.error("Invalid runtime setting:", msg.key);
+                return;
+            }
+            sendResponse(RUNTIME_SETTINGS[msg.key]);
             break;
         case "createAlert":
+            if (typeof msg.value !== "string") {
+                console.error("Invalid alert text.");
+                return;
+            }
             customAlert(msg.value);
             break;
     }

@@ -96,7 +96,6 @@
         function scanElements() {
             let elements = [...container.querySelectorAll(selector)];
 
-            // Custom filter example
             elements = elements.filter(el => el.id !== 'instructure_ajax_error_result');
 
             elements.forEach((el, i) => {
@@ -147,29 +146,19 @@
                     border.classList.remove('CounterHelper-highlight');
                 }
 
-                // Store handlers for cleanup
                 el._highlightFunction = highlight;
                 el._unhighlightFunction = unhighlight;
 
-                el.addEventListener('mouseover', highlight);
-                el.addEventListener('mouseout', unhighlight);
-                label.addEventListener('mouseover', highlight);
-                label.addEventListener('mouseout', unhighlight);
+                el.addEventListener('pointerenter', highlight);
+                el.addEventListener('pointerleave', unhighlight);
+                label.addEventListener('pointerenter', highlight);
+                label.addEventListener('pointerleave', unhighlight);
 
                 update();
 
-                const elementObserver = new MutationObserver(update);
-                elementObserver.observe(el, {
-                    attributes: true,
-                    attributeFilter: ['style', 'class', 'hidden', 'open']
-                });
-
-                el._a11yObserver = elementObserver;
-                el._updateFunction = update;
-
-                document.addEventListener('scroll', update, { capture: true, passive: true });
-                window.addEventListener('resize', update, { passive: true });
                 updateFunctions.push(update);
+
+                el._updateFunction = update;    
             });
         }
 
@@ -196,16 +185,8 @@
         }
 
         document.querySelectorAll(selector).forEach(el => {
-            if (el._a11yObserver) {
-                el._a11yObserver.disconnect();
-                delete el._a11yObserver;
-            }
-
-            document.removeEventListener('scroll', el._updateFunction, { capture: true });
-            window.removeEventListener('resize', el._updateFunction);
-
-            el.removeEventListener('mouseover', el._highlightFunction);
-            el.removeEventListener('mouseout', el._unhighlightFunction);
+            el.removeEventListener('pointerenter', el._highlightFunction);
+            el.removeEventListener('pointerleave', el._unhighlightFunction);
 
             const index = updateFunctions.indexOf(el._updateFunction);
             if (index > -1) updateFunctions.splice(index, 1);
@@ -215,6 +196,10 @@
             delete el._unhighlightFunction;
             delete el._a11yProcessed;
         });
+    }
+
+    function updateAll() {
+        updateFunctions.forEach(fn => fn());
     }
 
     // --- Menu labels ---
@@ -247,14 +232,34 @@
     const ro = new ResizeObserver(() => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
-            updateFunctions.forEach(fn => fn());
+            updateAll();
         }, 150);
     });
     ro.observe(document.body);
 
+
+    const elementObserver = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            if (mutation.target instanceof Element && mutation.target.closest('.CounterHelper')) {
+                continue;
+            }
+            updateAll();
+            break;
+        }
+    });
+    elementObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class', 'hidden', 'open']
+    });
+
+    document.addEventListener('scroll', updateAll, { capture: true, passive: true });
+    window.addEventListener('resize', updateAll, { passive: true });
+
     // Timer to ensure everything updates on a regular basis
     setInterval(() => {
-        updateFunctions.forEach(fn => fn());
+        updateAll();
     }, 2000);
 
 })();

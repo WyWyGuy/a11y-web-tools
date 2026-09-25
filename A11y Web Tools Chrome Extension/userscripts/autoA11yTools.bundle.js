@@ -16,15 +16,34 @@
         if (window.top !== window.self) return;
         const LANGUAGE_MODEL_CHARACTER_THRESHOLD = 20;
         const LANGUAGE_MODEL_CONFIDENCE_THRESHOLD = 0.9;
+        const MAX_LANGUAGE_CACHE_SIZE = 5e3;
         const languageCache = /* @__PURE__ */ new Map();
-        const DICT_URL = "https://raw.githubusercontent.com/WyWyGuy/tampermonkey-a11y-tools/refs/heads/main/englishWords.txt";
-        async function loadDictionary() {
-          const response = await fetch(DICT_URL);
-          if (response.ok) return await response.text();
+        function getCachedLanguage(text) {
+          if (!languageCache.has(text)) return void 0;
+          const response = languageCache.get(text);
+          languageCache.delete(text);
+          languageCache.set(text, response);
+          return response;
         }
-        const dictText = await loadDictionary();
-        if (!dictText) {
-          console.error("A11y dictionary not loaded.");
+        function setCachedLanguage(text, response) {
+          if (languageCache.has(text)) {
+            languageCache.delete(text);
+          }
+          languageCache.set(text, response);
+          if (languageCache.size > MAX_LANGUAGE_CACHE_SIZE) {
+            languageCache.delete(languageCache.keys().next().value);
+          }
+        }
+        let dictText;
+        try {
+          dictText = await chrome.runtime.sendMessage({ action: "getDictionary" });
+          if (typeof dictText !== "string") {
+            console.error("A11y dictionary returned an invalid response.");
+            dictText = "";
+          }
+        } catch (error) {
+          console.error("A11y dictionary not loaded:", error);
+          dictText = "";
         }
         const englishWords = new Set(
           dictText.split("\n").map((w) => w.trim().toLowerCase()).filter(Boolean)
@@ -55,7 +74,7 @@
           // Canvas settings page
         ];
         async function setAutoRun() {
-          const alwaysRunSetting = await getSetting("alwaysRun");
+          const alwaysRunSetting = await getSetting("alwaysRun") === true;
           const currentHost = window.location.hostname;
           const isAutoRunDomain = autoRunDomains.some((domain) => currentHost.endsWith(domain));
           const isExcludedPage = excludedPaths.some((pattern) => pattern.test(window.location.href));
@@ -120,7 +139,7 @@
           tempToolStates[tool.key] = false;
           shouldAutoRun = await setAutoRun();
           if (shouldAutoRun) {
-            const globallyActivated = await getSetting(tool.key);
+            const globallyActivated = await getSetting(tool.key) === true;
             tempToolStates[tool.key] = globallyActivated;
           }
         }
@@ -158,35 +177,60 @@
           const container = document.body;
           Object.values(TOOLS).forEach((tool) => tool.remove());
           for (const tool of Object.values(TOOLS)) {
-            await setToolState(tool, true);
-            await tool.run(container);
+            try {
+              await setToolState(tool, true);
+              await tool.run(container);
+            } catch (error) {
+              console.warn(`Could not run ${tool.key} while running all:`, error);
+            }
           }
         }
         async function removeAll() {
           for (const tool of Object.values(TOOLS)) {
-            await setToolState(tool, false);
-            tool.remove();
+            try {
+              await setToolState(tool, false);
+              tool.remove();
+            } catch (error) {
+              console.warn(`Could not remove ${tool.key} while removing all:`, error);
+            }
           }
           document.querySelectorAll(".AccessibilityHelper:not(.contrastInspector)").forEach((e) => e.remove());
         }
         async function getSetting(request) {
-          return new Promise(async (resolve) => {
-            await chrome.runtime.sendMessage({ action: "getSetting", value: request }, resolve);
-          });
+          try {
+            return await chrome.runtime.sendMessage({
+              action: "getSetting",
+              value: request
+            });
+          } catch (error) {
+            console.warn(`Unable to get setting "${request}":`, error);
+            return null;
+          }
         }
         async function setSetting(key, value) {
-          return new Promise(async (resolve) => {
-            await chrome.runtime.sendMessage({ action: "setSetting", key, value }, resolve);
-          });
+          try {
+            return await chrome.runtime.sendMessage({
+              action: "setSetting",
+              key,
+              value
+            });
+          } catch (error) {
+            console.warn(`Unable to set setting "${key}":`, error);
+            return false;
+          }
         }
         async function getToolState(tool) {
           return tempToolStates[tool.key];
         }
         async function setToolState(tool, value) {
+          const current = tempToolStates[tool.key];
           tempToolStates[tool.key] = value;
           shouldAutoRun = await setAutoRun();
           if (shouldAutoRun) {
-            await setSetting(tool.key, value);
+            const settingSet = await setSetting(tool.key, value);
+            if (!settingSet) {
+              tempToolStates[tool.key] = current;
+            }
           }
         }
         async function toggleTool(tool, value) {
@@ -216,7 +260,7 @@
           }
         }
         (async () => {
-          if (await getSetting("a11yHotkeys")) {
+          if (await getSetting("a11yHotkeys") === true) {
             document.addEventListener("keydown", keyHandler, true);
           }
         })();
@@ -278,14 +322,17 @@
               }
             }
           }
+          function getAltText(img) {
+            const roleAttr = (img.getAttribute && (img.getAttribute("role") || "")).toLowerCase();
+            return roleAttr === "presentation" ? "[Decorative]" : img.alt?.trim() || "[Missing]";
+          }
           function scanImages() {
             const images = container.querySelectorAll("img");
             images.forEach((img) => {
               if (img.closest(".AccessibilityHelper")) return;
               if (img._a11yImgProcessed) return;
               img._a11yImgProcessed = true;
-              const roleAttr = (img.getAttribute && (img.getAttribute("role") || "")).toLowerCase();
-              const altText = roleAttr === "presentation" ? "[Decorative]" : img.alt?.trim() || "[Missing]";
+              const altText = getAltText(img);
               const label = document.createElement("div");
               label.className = "A11y-img-label";
               const safeAlt = escapeHtml(altText);
@@ -306,6 +353,9 @@
                   border.style.left = window.scrollX + r.left - 8 + "px";
                   border.style.width = r.width + 16 + "px";
                   border.style.height = r.height + 16 + "px";
+                  const newAltText = getAltText(img);
+                  const newSafeAlt = escapeHtml(newAltText);
+                  label.innerHTML = `<span style="color:${newAltText === "[Missing]" ? "#c00" : "#060"}">Alt Text: ${newSafeAlt}</span>`;
                 } else {
                   label.style.display = "none";
                   border.style.display = "none";
@@ -347,7 +397,7 @@
             clearTimeout(overlayContainer._scanTimer);
             overlayContainer._scanTimer = null;
           }
-          const observer = new MutationObserver(async (mutations) => {
+          const observer = new MutationObserver((mutations) => {
             let shouldScan = false;
             for (const m of mutations) {
               const el = m.target.nodeType === Node.ELEMENT_NODE ? m.target : m.target.parentElement;
@@ -473,6 +523,7 @@
                   border.style.left = window.scrollX + r.left - 8 + "px";
                   border.style.width = r.width + 16 + "px";
                   border.style.height = r.height + 16 + "px";
+                  label.innerHTML = getLabelText(f);
                 } else {
                   label.style.display = "none";
                   border.style.display = "none";
@@ -527,7 +578,7 @@
             clearTimeout(overlayContainer._scanTimer);
             overlayContainer._scanTimer = null;
           }
-          const observer = new MutationObserver(async (mutations) => {
+          const observer = new MutationObserver((mutations) => {
             let shouldScan = false;
             for (const m of mutations) {
               const el = m.target.nodeType === Node.ELEMENT_NODE ? m.target : m.target.parentElement;
@@ -669,7 +720,7 @@
             clearTimeout(overlayContainer._scanTimer);
             overlayContainer._scanTimer = null;
           }
-          const observer = new MutationObserver(async (mutations) => {
+          const observer = new MutationObserver((mutations) => {
             let shouldScan = false;
             for (const m of mutations) {
               const el = m.target.nodeType === Node.ELEMENT_NODE ? m.target : m.target.parentElement;
@@ -802,7 +853,7 @@
             clearTimeout(overlayContainer._scanTimer);
             overlayContainer._scanTimer = null;
           }
-          const observer = new MutationObserver(async (mutations) => {
+          const observer = new MutationObserver((mutations) => {
             let shouldScan = false;
             for (const m of mutations) {
               const el = m.target.nodeType === Node.ELEMENT_NODE ? m.target : m.target.parentElement;
@@ -1109,7 +1160,8 @@
               let updatePosition = function() {
                 const r = el.getBoundingClientRect();
                 if (isActuallyVisible(el)) {
-                  if (passesContrast(el).passes) {
+                  const newPassesContrastResult = passesContrast(el);
+                  if (newPassesContrastResult.passes) {
                     border.style.display = "none";
                     return;
                   }
@@ -1121,6 +1173,30 @@
                   recommendedColors.style.top = Math.round(window.scrollY + r.top - 4) + "px";
                   recommendedColors.style.left = Math.round(window.scrollX + r.left + 2) + r.width / 2 + "px";
                   recommendedColors.style.transform = "translate(-50%, -100%)";
+                  defaultColor.style.backgroundColor = getEffectiveBackground(el);
+                  defaultColor.style.color = getEffectiveColor(el);
+                  defaultColor.innerHTML = `This text fails color contrast.<br/>(${newPassesContrastResult.ratio.toFixed(2)}:1, ${newPassesContrastResult.threshold.toFixed(2)}:1 required)`;
+                  const newNewColors = findClosestColor(el);
+                  if (newNewColors.text) {
+                    newText.style.backgroundColor = getEffectiveBackground(el);
+                    newText.style.color = newNewColors.text;
+                    newText.innerHTML = `Change the text to ${rgbToHex(newNewColors.text)}.<br/>(Shift + click to copy hex code)`;
+                    if (!recommendedColors.contains(newText)) {
+                      recommendedColors.appendChild(newText);
+                    }
+                  } else {
+                    newText.remove();
+                  }
+                  if (newNewColors.background) {
+                    newBackground.style.backgroundColor = newNewColors.background;
+                    newBackground.style.color = getEffectiveColor(el);
+                    newBackground.innerHTML = `Or change the background to ${rgbToHex(newNewColors.background)}.<br/>(Shift + right-click to copy hex code)`;
+                    if (!recommendedColors.contains(newBackground)) {
+                      recommendedColors.appendChild(newBackground);
+                    }
+                  } else {
+                    newBackground.remove();
+                  }
                 } else {
                   border.style.display = "none";
                 }
@@ -1187,8 +1263,10 @@
               defaultColor.innerHTML = `This text fails color contrast.<br/>(${passesContrastResult.ratio.toFixed(2)}:1, ${passesContrastResult.threshold.toFixed(2)}:1 required)`;
               recommendedColors.appendChild(defaultColor);
               const newColors = findClosestColor(el);
+              let newText;
+              let newBackground;
               if (newColors.text) {
-                const newText = document.createElement("div");
+                newText = document.createElement("div");
                 newText.className = "A11y-contrast-segment";
                 newText.style.backgroundColor = getEffectiveBackground(el);
                 newText.style.color = newColors.text;
@@ -1196,7 +1274,7 @@
                 recommendedColors.appendChild(newText);
               }
               if (newColors.background) {
-                const newBackground = document.createElement("div");
+                newBackground = document.createElement("div");
                 newBackground.className = "A11y-contrast-segment";
                 newBackground.style.backgroundColor = newColors.background;
                 newBackground.style.color = getEffectiveColor(el);
@@ -1245,7 +1323,7 @@
             overlayContainer._container.removeEventListener("pointerover", overlayContainer._linkHandler);
             overlayContainer._container.removeEventListener("pointerout", overlayContainer._linkHandler);
           }
-          const observer = new MutationObserver(async (mutations) => {
+          const observer = new MutationObserver((mutations) => {
             let shouldScan = false;
             for (const m of mutations) {
               const el = m.target.nodeType === Node.ELEMENT_NODE ? m.target : m.target.parentElement;
@@ -1345,7 +1423,7 @@
             overlayContainer._trackedMatches = /* @__PURE__ */ new Map();
           }
           async function predictLanguage(text) {
-            const cached = languageCache.get(text);
+            const cached = getCachedLanguage(text);
             if (cached) {
               return cached;
             }
@@ -1355,7 +1433,7 @@
                 value: text
               });
               if (response?.success) {
-                languageCache.set(text, response);
+                setCachedLanguage(text, response);
                 return response;
               } else {
                 console.error("Language model failed:", response?.error);
@@ -1451,7 +1529,7 @@
               const word = match[0];
               const start = match.index;
               const cleanWord = word.toLowerCase();
-              if (englishWords.has(cleanWord) || nearestLang && nearestLang.split("-")[0].toLowerCase() !== "en") {
+              if (englishWords.has(cleanWord) || englishWords.size == 0 || nearestLang && nearestLang.split("-")[0].toLowerCase() !== "en") {
                 continue;
               }
               let nodeMap = assureNodeMap(textNode);
@@ -1649,7 +1727,7 @@
               }
             }
           }
-          const observer = new MutationObserver(async (mutations) => {
+          const observer = new MutationObserver((mutations) => {
             let shouldScan = false;
             for (const m of mutations) {
               const el = m.target.nodeType === Node.ELEMENT_NODE ? m.target : m.target.parentElement;
@@ -1773,7 +1851,7 @@
               }
             }
           }
-          const tableHeaderSetting = await getSetting("tableHeaders");
+          const tableHeaderSetting = await getSetting("tableHeaders") === true;
           async function scanTables() {
             const tables = container.querySelectorAll("table");
             tables.forEach((table) => {
@@ -1800,6 +1878,12 @@
                 const r = table.getBoundingClientRect();
                 const visible = isActuallyVisible(table);
                 if (visible) {
+                  const newIssues = analyzeTableForA11yIssues(table);
+                  if (newIssues.length === 0) {
+                    label.style.display = "none";
+                    border.style.display = "none";
+                    return;
+                  }
                   label.style.display = "block";
                   border.style.display = "block";
                   label.style.top = window.scrollY + r.top - label.offsetHeight - 8 + "px";
@@ -1808,6 +1892,7 @@
                   border.style.left = window.scrollX + r.left - 8 + "px";
                   border.style.width = r.width + 16 + "px";
                   border.style.height = r.height + 16 + "px";
+                  label.innerHTML = "<span style='color: #c00;'>" + issues.join("\n") + "</span>";
                 } else {
                   label.style.display = "none";
                   border.style.display = "none";
@@ -1852,7 +1937,7 @@
             clearTimeout(overlayContainer._scanTimer);
             overlayContainer._scanTimer = null;
           }
-          const observer = new MutationObserver(async (mutations) => {
+          const observer = new MutationObserver((mutations) => {
             let shouldScan = false;
             for (const m of mutations) {
               const el = m.target.nodeType === Node.ELEMENT_NODE ? m.target : m.target.parentElement;
@@ -1911,9 +1996,13 @@
               document.getElementById("a11y-init-trigger")?.remove();
               const container = document.body;
               for (const tool of Object.values(TOOLS)) {
-                const enabled = await getToolState(tool);
-                if (enabled) {
-                  await tool.run(container);
+                try {
+                  const enabled = await getToolState(tool);
+                  if (enabled) {
+                    await tool.run(container);
+                  }
+                } catch (error) {
+                  console.warn(`Initial tool run failed for ${tool.key}:`, error);
                 }
               }
             }, 250);
@@ -1928,43 +2017,82 @@
           trigger.hidden = true;
           document.body.append(trigger);
         }
+        let updateScheduled = false;
+        function scheduleUpdateAll() {
+          if (updateScheduled) return;
+          updateScheduled = true;
+          requestAnimationFrame(() => {
+            updateScheduled = false;
+            updateFunctions.forEach((fn) => fn());
+          });
+        }
         let resizeTimeout;
         const ro = new ResizeObserver(() => {
           clearTimeout(resizeTimeout);
           resizeTimeout = setTimeout(() => {
-            updateFunctions.forEach((fn) => fn());
+            scheduleUpdateAll();
           }, 150);
         });
         ro.observe(document.body);
         setInterval(() => {
-          updateFunctions.forEach((fn) => fn());
+          scheduleUpdateAll();
         }, 2e3);
         runWhenPageLoaded();
         chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           switch (msg.action) {
             case "activateAll":
               (async () => {
-                await runAll();
-                sendResponse(true);
+                try {
+                  await runAll();
+                  sendResponse(true);
+                } catch (error) {
+                  console.warn("Unable to run all A11y tools:", error);
+                  sendResponse(false);
+                }
               })();
               return true;
             case "deactivateAll":
               (async () => {
-                await removeAll();
-                sendResponse(true);
+                try {
+                  await removeAll();
+                  sendResponse(true);
+                } catch (error) {
+                  console.warn("Unable to remove all A11y tools:", error);
+                  sendResponse(false);
+                }
               })();
               return true;
             case "toggleTool":
               (async () => {
                 const tool = Object.values(TOOLS).find((t) => t.key === msg.key);
-                await toggleTool(tool, msg.value);
-                sendResponse(true);
+                if (!tool) {
+                  console.warn("Invalid tool:", msg.key);
+                  sendResponse(false);
+                  return;
+                }
+                try {
+                  await toggleTool(tool, msg.value);
+                  sendResponse(true);
+                } catch (error) {
+                  console.warn(`Unable to toggle ${tool.key} A11y tool:`, error);
+                  sendResponse(false);
+                }
               })();
               return true;
             case "getA11ySetting":
               (async () => {
                 const tool = Object.values(TOOLS).find((t) => t.key === msg.value);
-                sendResponse(await getToolState(tool));
+                if (!tool) {
+                  console.warn("Invalid tool:", msg.value);
+                  sendResponse(null);
+                  return;
+                }
+                try {
+                  sendResponse(await getToolState(tool));
+                } catch (error) {
+                  console.warn(`Unable to get ${tool.key} A11y tool setting:`, error);
+                  return sendResponse(null);
+                }
               })();
               return true;
           }

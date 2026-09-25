@@ -1,5 +1,5 @@
 const params = new URLSearchParams(location.search);
-const isMac = params.get('mac') === "true";
+const isMac = navigator.userAgentData?.platform === 'macOS' || navigator.userAgent.includes('Mac') || navigator.platform?.includes('Mac');
 
 const modifierKey = isMac ? 'Cmd' : 'Ctrl';
 const altKey = isMac ? 'Opt' : 'Alt';

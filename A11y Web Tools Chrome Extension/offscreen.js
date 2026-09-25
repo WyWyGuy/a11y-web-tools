@@ -11,7 +11,10 @@ let langSessionPromise = null;
 
 async function getSession() {
     if (!langSessionPromise) {
-        langSessionPromise = ort.InferenceSession.create(modelUrl);
+        langSessionPromise = ort.InferenceSession.create(modelUrl).catch(error => {
+            langSessionPromise = null;
+            throw error;
+        });
     }
     return await langSessionPromise;
 }
@@ -24,6 +27,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
         try {
             const text = message.value;
+            if (typeof text !== "string" || text.trim() === "") {
+                sendResponse({
+                    success: false,
+                    error: "Invalid input"
+                });
+                return;
+            }
             const langSession = await getSession();
             const inputName = langSession.inputNames[0];
             const inputTensor = new ort.Tensor(
@@ -34,8 +44,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const results = await langSession.run({
                 [inputName]: inputTensor
             });
+            if (!results?.label?.data || !results?.probabilities?.data) {
+                throw new Error("Language model returned an unexpected result.");
+            }
             const language = results.label.data[0];
             const probabilities = Array.from(results.probabilities.data);
+            if (probabilities.length === 0) {
+                throw new Error("Language model returned no probabilities.");
+            }
             const confidence = Math.max(...probabilities);
             sendResponse({
                 success: true,
@@ -44,9 +60,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 probabilities
             });
         } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
             sendResponse({
                 success: false,
-                error: error.message
+                error: errorMessage
             });
         }
     })();
