@@ -1162,7 +1162,7 @@
 
             const threshold = isLargeText ? 3.0 : 4.5;
 
-            return { passes: ratio >= threshold, ratio: ratio, threshold: threshold };
+            return { passes: ratio >= threshold, ratio, threshold, color, bg };
         }
 
         function findClosestColor(el) {
@@ -1441,7 +1441,7 @@
                 defaultColor.className = 'A11y-contrast-segment';
                 defaultColor.style.backgroundColor = getEffectiveBackground(el);
                 defaultColor.style.color = getEffectiveColor(el);
-                defaultColor.innerHTML = `This text fails color contrast.<br/>(${passesContrastResult.ratio.toFixed(2)}:1, ${passesContrastResult.threshold.toFixed(2)}:1 required)`;
+                defaultColor.innerHTML = `${rgbToHex(passesContrastResult.color)} on ${rgbToHex(passesContrastResult.bg)} fails color contrast.<br/>(${passesContrastResult.ratio.toFixed(2)}:1, ${passesContrastResult.threshold.toFixed(2)}:1 required)`;
                 recommendedColors.appendChild(defaultColor);
 
                 const newColors = findClosestColor(el);
@@ -1486,7 +1486,7 @@
 
                         defaultColor.style.backgroundColor = getEffectiveBackground(el);
                         defaultColor.style.color = getEffectiveColor(el);
-                        defaultColor.innerHTML = `This text fails color contrast.<br/>(${newPassesContrastResult.ratio.toFixed(2)}:1, ${newPassesContrastResult.threshold.toFixed(2)}:1 required)`;
+                        defaultColor.innerHTML = `${rgbToHex(newPassesContrastResult.color)} on ${rgbToHex(newPassesContrastResult.bg)} fails color contrast.<br/>(${newPassesContrastResult.ratio.toFixed(2)}:1, ${newPassesContrastResult.threshold.toFixed(2)}:1 required)`;
                         const newNewColors = findClosestColor(el);
                         if (newNewColors.text) {
                             newText.style.backgroundColor = getEffectiveBackground(el);

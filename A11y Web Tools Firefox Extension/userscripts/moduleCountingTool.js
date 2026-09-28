@@ -109,10 +109,7 @@
                 }
                 if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
-                const newWindow = window.open(href, '_blank', 'noopener');
-                if (!newWindow) {
-                    console.warn('Popup blocked for link:', href);
-                }
+                window.open(href, '_blank', 'noopener');
             });
         });
 
