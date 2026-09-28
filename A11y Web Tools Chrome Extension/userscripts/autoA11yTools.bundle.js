@@ -971,7 +971,7 @@
             const fontWeight = parseInt(style.fontWeight, 10) || 400;
             const isLargeText = fontSize >= 18 || fontSize >= 14 && fontWeight >= 700;
             const threshold = isLargeText ? 3 : 4.5;
-            return { passes: ratio >= threshold, ratio, threshold };
+            return { passes: ratio >= threshold, ratio, threshold, color, bg };
           }
           function findClosestColor(el) {
             const style = getComputedStyle(el);
@@ -1175,7 +1175,7 @@
                   recommendedColors.style.transform = "translate(-50%, -100%)";
                   defaultColor.style.backgroundColor = getEffectiveBackground(el);
                   defaultColor.style.color = getEffectiveColor(el);
-                  defaultColor.innerHTML = `This text fails color contrast.<br/>(${newPassesContrastResult.ratio.toFixed(2)}:1, ${newPassesContrastResult.threshold.toFixed(2)}:1 required)`;
+                  defaultColor.innerHTML = `${rgbToHex(newPassesContrastResult.color)} on ${rgbToHex(newPassesContrastResult.bg)} fails color contrast.<br/>(${newPassesContrastResult.ratio.toFixed(2)}:1, ${newPassesContrastResult.threshold.toFixed(2)}:1 required)`;
                   const newNewColors = findClosestColor(el);
                   if (newNewColors.text) {
                     newText.style.backgroundColor = getEffectiveBackground(el);
@@ -1260,7 +1260,7 @@
               defaultColor.className = "A11y-contrast-segment";
               defaultColor.style.backgroundColor = getEffectiveBackground(el);
               defaultColor.style.color = getEffectiveColor(el);
-              defaultColor.innerHTML = `This text fails color contrast.<br/>(${passesContrastResult.ratio.toFixed(2)}:1, ${passesContrastResult.threshold.toFixed(2)}:1 required)`;
+              defaultColor.innerHTML = `${rgbToHex(passesContrastResult.color)} on ${rgbToHex(passesContrastResult.bg)} fails color contrast.<br/>(${passesContrastResult.ratio.toFixed(2)}:1, ${passesContrastResult.threshold.toFixed(2)}:1 required)`;
               recommendedColors.appendChild(defaultColor);
               const newColors = findClosestColor(el);
               let newText;
