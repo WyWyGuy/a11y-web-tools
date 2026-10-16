@@ -1,6 +1,11 @@
 (async function () {
     'use strict';
 
+    // Prevent multiple instances of the script running
+    const instanceKey = "__colorCheckerInitialized";
+    if (window[instanceKey]) return;
+    window[instanceKey] = true;
+
     async function getSetting(request) {
         try {
             return await chrome.runtime.sendMessage({
@@ -31,6 +36,11 @@
     tooltip.style.pointerEvents = 'none';
     tooltip.style.display = 'none';
     document.body.appendChild(tooltip);
+
+    function hideTooltip() {
+        lastTarget = null;
+        tooltip.style.display = 'none';
+    }
 
     function rgbToHex(rgb) {
         const result = rgb.match(/\d+/g);
@@ -95,9 +105,12 @@
 
         const el = e.target;
         if (!(el instanceof Element)) return;
+        if (el instanceof HTMLIFrameElement) {
+            hideTooltip();
+            return;
+        }
         if (el.closest('.AccessibilityHelper')) {
-            lastTarget = null;
-            tooltip.style.display = 'none';
+            hideTooltip();
             return;
         }
 
@@ -184,17 +197,24 @@
     }, true);
 
     window.addEventListener('blur', () => {
-        lastTarget = null;
-        tooltip.style.display = 'none';
+        hideTooltip();
     });
+
+    document.addEventListener('pointerout', e => {
+        if (e.relatedTarget === null || e.relatedTarget instanceof HTMLIFrameElement) {
+            hideTooltip();
+        }
+    }, true);
 
     document.addEventListener('click', e => {
         if (!inspectorEnabled) return;
         if (!color_global) return;
         if (e.button === 0) {
-            navigator.clipboard.writeText(color_global).catch(error => {
-                console.warn("Unable to copy text color:", error);
-            });
+            window.top.postMessage({
+                channel: "colorChecker",
+                action: "copyColor",
+                color: color_global
+            }, "*");
             e.preventDefault();
             e.stopPropagation();
         }
@@ -203,12 +223,26 @@
     document.addEventListener('contextmenu', e => {
         if (!inspectorEnabled) return;
         if (!bg_global) return;
-        navigator.clipboard.writeText(bg_global).catch(error => {
-            console.warn("Unable to copy text color:", error);
-        });
+        window.top.postMessage({
+            channel: "colorChecker",
+            action: "copyColor",
+            color: bg_global
+        }, "*");
         e.preventDefault();
         e.stopPropagation();
     }, true);
+
+    if (window === window.top) {
+        window.addEventListener("message", e => {
+            const message = e.data;
+            if (message?.channel !== "colorChecker") return;
+            if (message.action !== "copyColor") return;
+            if (!/^#[0-9a-f]{6}$/i.test(message.color)) return;
+            navigator.clipboard.writeText(message.color).catch(error => {
+                console.warn("Unable to copy color:", error);
+            });
+        })
+    }
 
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (msg.action === 'toggleContrastInspector') {

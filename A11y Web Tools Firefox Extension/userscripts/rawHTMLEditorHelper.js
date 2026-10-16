@@ -1,6 +1,11 @@
 (async function () {
     "use strict";
 
+    // Prevent multiple instances of the script running
+    const instanceKey = "__rawHTMLEditorHelperInitialized";
+    if (window[instanceKey]) return;
+    window[instanceKey] = true;
+
     async function getSetting(request) {
         try {
             return await chrome.runtime.sendMessage({

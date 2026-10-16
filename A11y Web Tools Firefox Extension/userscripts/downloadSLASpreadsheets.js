@@ -1,6 +1,11 @@
 (function () {
     'use strict';
 
+    // Prevent multiple instances of the script running
+    const instanceKey = "__downloadSLASpreadsheetsInitialized";
+    if (window[instanceKey]) return;
+    window[instanceKey] = true;
+
     function sleep(ms = 50) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }

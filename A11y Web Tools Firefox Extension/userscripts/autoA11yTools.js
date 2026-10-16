@@ -2,7 +2,9 @@
     'use strict';
 
     // Prevent multiple instances of the script running
-    if (window.top !== window.self) return;
+    const instanceKey = "__a11yAutoToolsInitialized";
+    if (window[instanceKey]) return;
+    window[instanceKey] = true;
 
     const LANGUAGE_MODEL_CHARACTER_THRESHOLD = 20;
     const LANGUAGE_MODEL_CONFIDENCE_THRESHOLD = 0.9;
@@ -245,18 +247,22 @@
         } catch (e) { /* ignore */ }
     }
 
-    let keyHandlerQueue = Promise.resolve();
-    function enqueue(fn) {
-        keyHandlerQueue = keyHandlerQueue.then(fn).catch(() => {});
-    }
-    async function keyHandler(e) {
+    function keyHandler(e) {
+        let action;
+        if (e.code === 'NumpadAdd' || e.keyCode === 107) {
+            action = "activateAllA11yTools";
+        } else if (e.code === 'NumpadSubtract' || e.keyCode === 109) {
+            action = "deactivateAllA11yTools";
+        } else {
+            return;
+        }
         try {
-            if (e.code === 'NumpadAdd' || e.keyCode === 107) {
-                enqueue(() => runAll());
-            } else if (e.code === 'NumpadSubtract' || e.keyCode === 109) {
-                enqueue(() => removeAll());
-            }
-        } catch (err) { /* ignore */ }
+            chrome.runtime.sendMessage({ action }).catch(error => {
+                console.warn(`Failed to request ${action}:`, error);
+            });
+        } catch (error) {
+            console.warn(`Failed to request ${action}:`, error);
+        }
     }
     (async () => {
         if (await getSetting("a11yHotkeys") === true) {
@@ -1556,7 +1562,11 @@
                 function copyTextColor(e) {
                     if (!e.shiftKey) return;
                     if (e.button === 0 && newColors.text) {
-                        navigator.clipboard.writeText(rgbToHex(newColors.text));
+                        window.top.postMessage({
+                            channel: "autoA11yTools",
+                            action: "copyColor",
+                            color: rgbToHex(newColors.text)
+                        }, "*");
                         e.preventDefault();
                         e.stopPropagation();
                     }
@@ -1565,7 +1575,11 @@
                 function copyBackgroundColor(e) {
                     if (!e.shiftKey) return;
                     if (newColors.background) {
-                        navigator.clipboard.writeText(rgbToHex(newColors.background));
+                        window.top.postMessage({
+                            channel: "autoA11yTools",
+                            action: "copyColor",
+                            color: rgbToHex(newColors.background)
+                        }, "*");
                         e.preventDefault();
                         e.stopPropagation();
                     }
@@ -1618,6 +1632,9 @@
             overlayContainer._container.removeEventListener('pointerover', overlayContainer._linkHandler);
             overlayContainer._container.removeEventListener('pointerout', overlayContainer._linkHandler);
         }
+        if (overlayContainer._copyColorMessageHandler) {
+            window.removeEventListener("message", overlayContainer._copyColorMessageHandler);
+        }
         const observer = new MutationObserver(mutations => {
             let shouldScan = false;
             for (const m of mutations) {
@@ -1649,6 +1666,20 @@
         container.addEventListener('pointerover', linkHandler);
         container.addEventListener('pointerout', linkHandler);
 
+        if (window === window.top) {
+            const copyColorMessageHandler = e => {
+                const message = e.data;
+                if (message?.channel !== "autoA11yTools") return;
+                if (message.action !== "copyColor") return;
+                if (!/^#[0-9a-f]{6}$/i.test(message.color)) return;
+                navigator.clipboard.writeText(message.color).catch(error => {
+                    console.warn("Unable to copy color:", error);
+                });
+            };
+            window.addEventListener("message", copyColorMessageHandler);
+            overlayContainer._copyColorMessageHandler = copyColorMessageHandler;
+        }
+
         overlayContainer._observer = observer;
         overlayContainer._container = container;
         overlayContainer._linkHandler = linkHandler;
@@ -1670,6 +1701,9 @@
             if (overlayContainer._container && overlayContainer._linkHandler) {
                 overlayContainer._container.removeEventListener('pointerover', overlayContainer._linkHandler);
                 overlayContainer._container.removeEventListener('pointerout', overlayContainer._linkHandler);
+            }
+            if (overlayContainer._copyColorMessageHandler) {
+                window.removeEventListener("message", overlayContainer._copyColorMessageHandler);
             }
             const trackedElements = overlayContainer._trackedElements;
 

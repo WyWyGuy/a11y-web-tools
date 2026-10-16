@@ -1,6 +1,11 @@
 (function () {
     'use strict';
 
+    // Prevent multiple instances of the script running
+    const instanceKey = "__canvasFilePathToolInitialized";
+    if (window[instanceKey]) return;
+    window[instanceKey] = true;
+
     // Only run on file pages
     const fullPath = location.pathname + location.search;
     const isFilePage = /^\/courses\/\d+\/files(?:[/?].*)?$/i.test(fullPath);

@@ -1,6 +1,11 @@
 (async function() {
     'use strict';
 
+    // Prevent multiple instances of the script running
+    const instanceKey = "__dropdownControlToolInitialized";
+    if (window[instanceKey]) return;
+    window[instanceKey] = true;
+
     async function getSetting(request) {
         try {
             return await chrome.runtime.sendMessage({
@@ -72,18 +77,51 @@
     (async () => {
         if (await getSetting("dropdownHotkeys") === true) {
             document.addEventListener('keydown', function(e) {
+                let action;
                 if (e.altKey && e.key === 'ArrowDown') {
                     e.preventDefault();
-                    expandAll();
+                    action = "expandAllDropdowns";
                 }
                 else if (e.altKey && e.key === 'ArrowUp') {
                     e.preventDefault();
-                    collapseAll();
+                    action = "collapseAllDropdowns";
+                } else {
+                    return;
                 }
-            });
+                try {
+                    chrome.runtime.sendMessage({ action }).catch(error => {
+                        console.warn(`Failed to request ${action}:`, error);
+                    });
+                } catch (error) {
+                    console.warn(`Failed to request ${action}:`, error);
+                }
+            }, true);
         }
     })();
 
     runWhenPageLoaded();
+
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+            switch (msg.action) {
+                case "expandAll":
+                    try {
+                        expandAll();
+                        sendResponse(true);
+                    } catch (error) {
+                        console.warn("Unable to expand all:", error);
+                        sendResponse(false);
+                    }
+                    break;
+                case "collapseAll":
+                    try {
+                        collapseAll();
+                        sendResponse(true);
+                    } catch (error) {
+                        console.warn("Unable to collapse all:", error);
+                        sendResponse(false);
+                    }
+                    break;
+            }
+    });
 
 })();
