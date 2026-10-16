@@ -1,6 +1,11 @@
 (function() {
     'use strict';
 
+    // Prevent multiple instances of the script running
+    const instanceKey = "__elementCountingToolInitialized";
+    if (window[instanceKey]) return;
+    window[instanceKey] = true;
+
     // --- Styles ---
     if (!document.getElementById('counter-helper-style')) {
         const s = document.createElement('style');

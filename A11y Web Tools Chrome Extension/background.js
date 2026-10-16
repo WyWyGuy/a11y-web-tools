@@ -286,10 +286,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             getDictionary().then(sendResponse);
             return true;
         case "activateAllA11yTools":
-            handleActivateAll();
+            handleToggleAll(message.action, sender.tab?.id);
             break;
         case "deactivateAllA11yTools":
-            handleDeactivateAll();
+            handleToggleAll(message.action, sender.tab?.id);
+            break;
+        case "expandAllDropdowns":
+            handleToggleDropdowns(message.action, sender.tab?.id);
+            break;
+        case "collapseAllDropdowns":
+            handleToggleDropdowns(message.action, sender.tab?.id);
             break;
         case "toggleImageOverlays":
             handleToggleImageOverlays();
@@ -481,18 +487,57 @@ async function getA11ySetting(key) {
     }
 }
 
-// Handlers with logic for each button (update settings, input style, and interact with userscripts)
-async function handleActivateAll() {
+// Queue logic for handling multiple keyboard commands
+let commandQueue = Promise.resolve();
+function enqueueCommand(command) {
+    const result = commandQueue.then(command);
+    commandQueue = result.catch(error => {
+        console.warn("Queued command failed:", error);
+    });
+    return result;
+}
+
+async function toggleAllFrames(action, tabId, shouldIncludeFrame) {
+    const frames = await chrome.webNavigation.getAllFrames({ tabId }) ?? [];
+    const targetFrames = frames.filter(frame => frame.url && shouldIncludeFrame(frame.url));
+    const results = await Promise.allSettled(
+        targetFrames.map(({ frameId }) => 
+            Promise.resolve().then(async () => {
+                const response = await chrome.tabs.sendMessage(tabId, { action }, { frameId });
+                if (response !== true) {
+                    throw new Error(`Frame returned ${String(response)}`);
+                }
+                return frameId;
+            })
+        )
+    );
+    results.forEach((result, index) => {
+        const frameId = targetFrames[index].frameId;
+        if (result.status === "rejected") {
+            console.warn(`Frame ${frameId} did not complete ${action}:`, result.reason);
+        }
+    });
+    return results;
+}
+
+async function performToggleAll(action, tabId) {
+    if (tabId == null) {
+        return;
+    }
+    const a11yScript = USERSCRIPTS.find(script => script.file === "userscripts/autoA11yTools.bundle.js");
+    if (!a11yScript) {
+        console.warn("Could not find the a11y script configuration.");
+        return;
+    }
     await Promise.all(
         a11yKeys.map(async key => {
             await changeInputStyle("buttonColorChange", keyToColor[key], "loading");
         })
     );
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     try {
-        await chrome.tabs.sendMessage(tab.id, { action: "activateAll" });
+        await toggleAllFrames(action, tabId, url => a11yScript.matches(url));
     } catch (error) {
-        console.warn("Unable to activate all tools on current page:", error);
+        console.warn("Could not toggle all frames:", error);
     } finally {
         await Promise.all(
             a11yKeys.map(async key => {
@@ -503,25 +548,45 @@ async function handleActivateAll() {
     }
 }
 
-async function handleDeactivateAll() {
-    await Promise.all(
-        a11yKeys.map(async key => {
-            await changeInputStyle("buttonColorChange", keyToColor[key], "loading");
-        })
-    );
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    try {
-        await chrome.tabs.sendMessage(tab.id, { action: "deactivateAll" });
-    } catch (error) {
-        console.warn("Unable to deactivate all tools on current page:", error);
-    } finally {
-        await Promise.all(
-            a11yKeys.map(async key => {
-                const enabled = await getA11ySetting(key);
-                await changeInputStyle("buttonColorChange", keyToColor[key], enabled);
-            })
-        );
+async function performToggleDropdowns(action, tabId) {
+    if (tabId == null) {
+        return;
     }
+    const dropdownScript = USERSCRIPTS.find(script => script.file === "userscripts/dropdownControlTool.js");
+    if (!dropdownScript) {
+        console.warn("Could not find the dropdown script configuration.");
+        return;
+    }
+    try {
+        await toggleAllFrames(action, tabId, url => dropdownScript.matches(url));
+    } catch (error) {
+        console.warn("Could not toggle all dropdowns:", error);
+    }
+}
+
+// Handlers with logic for each button (update settings, input style, and interact with userscripts)
+function handleToggleAll(toggleType, tabId) {
+    let action;
+    if (toggleType === "activateAllA11yTools") {
+        action = "activateAll";
+    } else if (toggleType === "deactivateAllA11yTools") {
+        action = "deactivateAll";
+    } else {
+        return Promise.resolve();
+    }
+    return enqueueCommand(() => performToggleAll(action, tabId));
+}
+
+function handleToggleDropdowns(toggleType, tabId) {
+    let action;
+    if (toggleType === "expandAllDropdowns") {
+        action = "expandAll";
+    } else if (toggleType === "collapseAllDropdowns") {
+        action = "collapseAll";
+    } else {
+        return Promise.resolve();
+    }
+    return enqueueCommand(() => performToggleDropdowns(action, tabId));
 }
 
 async function handleToggleImageOverlays() {

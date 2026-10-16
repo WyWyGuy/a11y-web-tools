@@ -1,6 +1,11 @@
 (async function() {
     'use strict';
 
+    // Prevent multiple instances of the script running
+    const instanceKey = "__h5pLanguageSelectorInitialized";
+    if (window[instanceKey]) return;
+    window[instanceKey] = true;
+
     const DEFAULT_LANGUAGE = 'english';
     const DROPDOWN_WAIT_TIMEOUT = 3000;
 

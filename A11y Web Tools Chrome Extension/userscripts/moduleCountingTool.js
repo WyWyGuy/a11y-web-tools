@@ -1,6 +1,11 @@
 (function() {
     'use strict';
 
+    // Prevent multiple instances of the script running
+    const instanceKey = "__moduleCountingToolInitialized";
+    if (window[instanceKey]) return;
+    window[instanceKey] = true;
+
     // Only run on home and modules pages
     const url = window.location.href;
     const isModulesPage = /\/courses\/\d+\/modules\/?$/.test(url);
