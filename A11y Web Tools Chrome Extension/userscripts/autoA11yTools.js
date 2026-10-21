@@ -64,9 +64,19 @@
     ];
     async function setAutoRun() {
         const alwaysRunSetting = await getSetting("alwaysRun") === true;
-        const currentHost = window.location.hostname;
-        const isAutoRunDomain = autoRunDomains.some(domain => currentHost.endsWith(domain));
-        const isExcludedPage = excludedPaths.some(pattern => pattern.test(window.location.href));
+        let topPageUrl = null;
+        try {
+            topPageUrl = await chrome.runtime.sendMessage({ action: "getTopPageUrl" });
+        } catch (error) {
+            console.warn(`Could not retrieve top page URL:`, error);
+        }
+        if (!topPageUrl || typeof topPageUrl !== "string") {
+            console.warn("Top page URL not found.");
+            return alwaysRunSetting;
+        }
+        const topHost = new URL(topPageUrl).hostname;
+        const isAutoRunDomain = autoRunDomains.some(domain => topHost.endsWith(domain));
+        const isExcludedPage = excludedPaths.some(pattern => pattern.test(topPageUrl));
         return (isAutoRunDomain && !isExcludedPage) || alwaysRunSetting;
     }
     let shouldAutoRun = await setAutoRun();
