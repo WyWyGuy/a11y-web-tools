@@ -64,9 +64,19 @@
     ];
     async function setAutoRun() {
         const alwaysRunSetting = await getSetting("alwaysRun") === true;
-        const currentHost = window.location.hostname;
-        const isAutoRunDomain = autoRunDomains.some(domain => currentHost.endsWith(domain));
-        const isExcludedPage = excludedPaths.some(pattern => pattern.test(window.location.href));
+        let topPageUrl = null;
+        try {
+            topPageUrl = await chrome.runtime.sendMessage({ action: "getTopPageUrl" });
+        } catch (error) {
+            console.warn(`Could not retrieve top page URL:`, error);
+        }
+        if (!topPageUrl || typeof topPageUrl !== "string") {
+            console.warn("Top page URL not found.");
+            return alwaysRunSetting;
+        }
+        const topHost = new URL(topPageUrl).hostname;
+        const isAutoRunDomain = autoRunDomains.some(domain => topHost.endsWith(domain));
+        const isExcludedPage = excludedPaths.some(pattern => pattern.test(topPageUrl));
         return (isAutoRunDomain && !isExcludedPage) || alwaysRunSetting;
     }
     let shouldAutoRun = await setAutoRun();
@@ -144,24 +154,24 @@
         style.id = 'a11y-overlay-styles';
         style.textContent = `
       .AccessibilityHelper { font-family: Arial, Helvetica, sans-serif; }
-      .A11y-img-label { position: absolute; background: #FFF; border: 3px solid #CCC; border-radius: 7px; padding: 5px; text-align: left; white-space: pre-wrap; font-size: 12px; width: 150px; z-index: 9994; color: black; display: none; transition: all 0.2s ease; }
+      .A11y-img-label { position: absolute; background: #FFF; border: 3px solid #CCC; border-radius: 7px; padding: 5px; pointer-events: auto; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; width: 150px; z-index: 9994; color: black; display: none; transition: all 0.2s ease; }
       .A11y-img-border { position: absolute; border: 3px solid #CCC; border-radius: 7px; z-index: 9993; display: none; pointer-events: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
-      .A11y-iframe-label { position: absolute; background: #FFF; border: 3px solid #CCC; border-radius: 7px; padding: 5px; text-align: left; white-space: pre-wrap; font-size: 12px; width: 300px; z-index: 9994; color: black; display: none; transition: all 0.2s ease; }
+      .A11y-iframe-label { position: absolute; background: #FFF; border: 3px solid #CCC; border-radius: 7px; padding: 5px; pointer-events: auto; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; width: 300px; z-index: 9994; color: black; display: none; transition: all 0.2s ease; }
       .A11y-iframe-border { position: absolute; border: 3px solid #CCC; border-radius: 7px; z-index: 9993; display: none; pointer-events: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
-      .A11y-header-label { position: absolute; background: #FFF; border: 3px solid #CCC; border-radius: 4px; padding: 2px 4px; text-align: left; white-space: nowrap; font-size: 12px; z-index: 9995; color: black; display: none; transition: all 0.2s ease; }
+      .A11y-header-label { position: absolute; background: #FFF; border: 3px solid #CCC; border-radius: 4px; padding: 2px 4px; pointer-events: auto; text-align: left; white-space: nowrap; font-size: 12px; z-index: 9995; color: black; display: none; transition: all 0.2s ease; }
       .A11y-header-border { position: absolute; border: 3px solid #CCC; border-radius: 4px; z-index: 9993; display: none; pointer-events: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
       .A11y-ib-border { position: absolute; border: 2px solid red; border-radius: 4px; z-index: 9996; pointer-events: none; transition: all 0.2s ease; display: none; }
       .A11y-ib-highlight { border-color: #c00 !important; box-shadow: 1px 2px 5px #f99; z-index: 9996; }
       .A11y-contrast-border { position: absolute; border: 2px solid blue; border-radius: 4px; z-index: 9996; pointer-events: none; transition: all 0.2s ease; display: none; }
       .A11y-contrast-highlight { border-color: #339 !important; box-shadow: 1px 2px 5px #99f; z-index: 9996; }
-      .A11y-contrast-recommended { position: absolute; transition: all 0.2s ease; opacity: 0; visibility: hidden; border-radius: 4px; min-width: 250px; z-index: 9997; }
+      .A11y-contrast-recommended { position: absolute; transition: all 0.2s ease; opacity: 0; visibility: hidden; pointer-events: auto; border-radius: 4px; min-width: 250px; z-index: 9997; }
       .A11y-contrast-recommended.visible {  opacity: 1; visibility: visible; }
       .A11y-contrast-segment { padding: 2px 4px; font-size: 12px; }
-      .A11y-table-label { position: absolute; background: #FFF; border: 3px solid #CCC; border-radius: 7px; padding: 5px; text-align: left; white-space: pre-wrap; font-size: 12px; width: 300px; z-index: 9994; color: black; display: none; transition: all 0.2s ease; }
+      .A11y-table-label { position: absolute; background: #FFF; border: 3px solid #CCC; border-radius: 7px; padding: 5px; pointer-events: auto; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; width: 300px; z-index: 9994; color: black; display: none; transition: all 0.2s ease; }
       .A11y-table-border { position: absolute; border: 3px solid #CCC; border-radius: 7px; z-index: 9993; display: none; pointer-events: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
       .A11y-lang-border { position: absolute; border: 2px solid green; border-radius: 4px; z-index: 9996; pointer-events: none; transition: all 0.2s ease; display: none; }
       .A11y-lang-highlight { border-color: #2b2 !important; box-shadow: 1px 2px 6px #7f7; z-index: 9996; }
-      .A11y-lang-info { position: absolute; transition: all 0.2s ease; opacity: 0; visibility: hidden; border-radius: 4px; min-width: 175px; color: black; background-color: white; z-index: 9997; }
+      .A11y-lang-info { position: absolute; transition: all 0.2s ease; opacity: 0; visibility: hidden; border-radius: 4px; pointer-events: auto; min-width: 175px; color: black; background-color: white; z-index: 9997; }
       .A11y-lang-info.visible {  opacity: 1; visibility: visible; }
       .A11y-lang-segment { padding: 2px 4px; font-size: 12px; }
     `;
@@ -333,6 +343,14 @@
             overlayContainer.dataset.tool = toolKey;
             document.body.appendChild(overlayContainer);
         }
+        Object.assign(overlayContainer.style, {
+            position: 'fixed',
+            inset: '0',
+            overflow: 'clip',
+            contain: 'layout paint',
+            pointerEvents: 'none',
+            zIndex: '10004'
+        });
 
         overlayContainer._scanTimer = null;
         let scanRunning = false;
@@ -389,10 +407,10 @@
                     if (visible) {
                         label.style.display = 'block';
                         border.style.display = 'block';
-                        label.style.top = window.scrollY + r.top - label.offsetHeight - 8 + 'px';
-                        label.style.left = window.scrollX + r.left + 'px';
-                        border.style.top = window.scrollY + r.top - 8 + 'px';
-                        border.style.left = window.scrollX + r.left - 8 + 'px';
+                        label.style.top = r.top - label.offsetHeight - 8 + 'px';
+                        label.style.left = r.left + 'px';
+                        border.style.top = r.top - 8 + 'px';
+                        border.style.left = r.left - 8 + 'px';
                         border.style.width = r.width + 16 + 'px';
                         border.style.height = r.height + 16 + 'px';
                         
@@ -513,6 +531,14 @@
             overlayContainer.dataset.tool = toolKey;
             document.body.appendChild(overlayContainer);
         }
+        Object.assign(overlayContainer.style, {
+            position: 'fixed',
+            inset: '0',
+            overflow: 'clip',
+            contain: 'layout paint',
+            pointerEvents: 'none',
+            zIndex: '10004'
+        });
 
         function getLabelText(f) {
             let title = f.title?.trim() || '[Empty]';
@@ -604,11 +630,11 @@
                         label.style.display = 'block';
                         border.style.display = 'block';
 
-                        label.style.top = window.scrollY + r.top - label.offsetHeight - 8 + 'px';
-                        label.style.left = window.scrollX + r.left + 'px';
+                        label.style.top = r.top - label.offsetHeight - 8 + 'px';
+                        label.style.left = r.left + 'px';
 
-                        border.style.top = window.scrollY + r.top - 8 + 'px';
-                        border.style.left = window.scrollX + r.left - 8 + 'px';
+                        border.style.top = r.top - 8 + 'px';
+                        border.style.left = r.left - 8 + 'px';
                         border.style.width = r.width + 16 + 'px';
                         border.style.height = r.height + 16 + 'px';
 
@@ -743,6 +769,14 @@
             overlayContainer.dataset.tool = toolKey;
             document.body.appendChild(overlayContainer);
         }
+        Object.assign(overlayContainer.style, {
+            position: 'fixed',
+            inset: '0',
+            overflow: 'clip',
+            contain: 'layout paint',
+            pointerEvents: 'none',
+            zIndex: '10005'
+        });
 
         overlayContainer._scanTimer = null;
         let scanRunning = false;
@@ -790,10 +824,10 @@
                     if (visible) {
                         label.style.display = 'block';
                         border.style.display = 'block';
-                        label.style.top = window.scrollY + r.top - label.offsetHeight + 3 + 'px';
-                        label.style.left = window.scrollX + r.left + 'px';
-                        border.style.top = window.scrollY + r.top + 'px';
-                        border.style.left = window.scrollX + r.left + 'px';
+                        label.style.top = r.top - label.offsetHeight + 3 + 'px';
+                        label.style.left = r.left + 'px';
+                        border.style.top = r.top + 'px';
+                        border.style.left = r.left + 'px';
                         border.style.width = r.width + 'px';
                         border.style.height = r.height + 'px';
                     } else {
@@ -910,6 +944,14 @@
             overlayContainer.dataset.tool = toolKey;
             document.body.appendChild(overlayContainer);
         }
+        Object.assign(overlayContainer.style, {
+            position: 'fixed',
+            inset: '0',
+            overflow: 'clip',
+            contain: 'layout paint',
+            pointerEvents: 'none',
+            zIndex: '10006'
+        });
 
         function hasText(el) {
             return Array.from(el.childNodes)
@@ -962,8 +1004,8 @@
 
                     if (visible) {
                         border.style.display = 'block';
-                        border.style.top = Math.round(window.scrollY + r.top - 4) + 'px';
-                        border.style.left = Math.round(window.scrollX + r.left - 4) + 'px';
+                        border.style.top = Math.round(r.top - 4) + 'px';
+                        border.style.left = Math.round(r.left - 4) + 'px';
                         border.style.width = Math.round(r.width + 8) + 'px';
                         border.style.height = Math.round(r.height + 8) + 'px';
                     } else {
@@ -1077,6 +1119,14 @@
             overlayContainer.dataset.tool = toolKey;
             document.body.appendChild(overlayContainer);
         }
+        Object.assign(overlayContainer.style, {
+            position: 'fixed',
+            inset: '0',
+            overflow: 'clip',
+            contain: 'layout paint',
+            pointerEvents: 'none',
+            zIndex: '10006'
+        });
 
         if (!overlayContainer._trackedElements) {
             overlayContainer._trackedElements = new Set();
@@ -1482,12 +1532,12 @@
                             return;
                         }
                         border.style.display = 'block';
-                        border.style.top = Math.round(window.scrollY + r.top - 4) + 'px';
-                        border.style.left = Math.round(window.scrollX + r.left - 4) + 'px';
+                        border.style.top = Math.round(r.top - 4) + 'px';
+                        border.style.left = Math.round(r.left - 4) + 'px';
                         border.style.width = Math.round(r.width + 8) + 'px';
                         border.style.height = Math.round(r.height + 8) + 'px';
-                        recommendedColors.style.top = Math.round(window.scrollY + r.top - 4) + "px";
-                        recommendedColors.style.left = (Math.round(window.scrollX + r.left + 2) + r.width / 2) + "px";
+                        recommendedColors.style.top = Math.round(r.top - 4) + "px";
+                        recommendedColors.style.left = (Math.round(r.left + 2) + r.width / 2) + "px";
                         recommendedColors.style.transform = 'translate(-50%, -100%)';
 
                         defaultColor.style.backgroundColor = getEffectiveBackground(el);
@@ -1585,6 +1635,11 @@
                     }
                 }
 
+                function preventHighlightText(e) {
+                    if (!e.shiftKey) return;
+                    e.preventDefault();
+                }
+
                 el._contrastBorder = border;
                 el._contrastPopup = recommendedColors;
                 el._contrastUpdate = updatePosition;
@@ -1594,11 +1649,13 @@
                 el._contrastUnhighlightPopup = unhighlightPopup;
                 el._contrastCopyText = copyTextColor;
                 el._contrastCopyBackground = copyBackgroundColor;
+                el._preventHighlightText = preventHighlightText;
 
                 el.addEventListener('pointerenter', highlightBorder);
                 el.addEventListener('pointerleave', unhighlightBorder);
                 recommendedColors.addEventListener('pointerenter', highlightPopup);
                 recommendedColors.addEventListener('pointerleave', unhighlightPopup);
+                el.addEventListener('pointerdown', preventHighlightText);
                 el.addEventListener('click', copyTextColor);
                 el.addEventListener('contextmenu', copyBackgroundColor);
 
@@ -1723,6 +1780,7 @@
                     el._contrastPopup.removeEventListener('pointerleave', el._contrastUnhighlightPopup);
                     el.removeEventListener('click', el._contrastCopyText);
                     el.removeEventListener('contextmenu', el._contrastCopyBackground);
+                    el.removeEventListener('pointerdown', el._preventHighlightText);
 
                     const idx = updateFunctions.indexOf(el._contrastUpdate);
                     if (idx > -1) updateFunctions.splice(idx, 1);
@@ -1744,6 +1802,7 @@
                     delete el._contrastCopyText;
                     delete el._contrastCopyBackground;
                     delete el._a11yContrastProcessed;
+                    delete el._preventHighlightText;
                 });
                 trackedElements.clear();
             }
@@ -1763,6 +1822,14 @@
             overlayContainer.dataset.tool = toolKey;
             document.body.appendChild(overlayContainer);
         }
+        Object.assign(overlayContainer.style, {
+            position: 'fixed',
+            inset: '0',
+            overflow: 'clip',
+            contain: 'layout paint',
+            pointerEvents: 'none',
+            zIndex: '10006'
+        });
 
         if (!overlayContainer._trackedMatches) {
             overlayContainer._trackedMatches = new Map();
@@ -2114,13 +2181,13 @@
             }
 
             border.style.display = 'block';
-            border.style.top = Math.round(window.scrollY + rect.top - 3) + 'px';
-            border.style.left = Math.round(window.scrollX + rect.left - 3) + 'px';
+            border.style.top = Math.round(rect.top - 3) + 'px';
+            border.style.left = Math.round(rect.left - 3) + 'px';
             border.style.width = Math.round(rect.width + 6) + 'px';
             border.style.height = Math.round(rect.height + 6) + 'px';
             if (popup) {
-                popup.style.top = (Math.round(window.scrollY + rect.top) + rect.height + 7) + 'px';
-                popup.style.left = (Math.round(window.scrollX + rect.left + 2) + rect.width / 2) + 'px';
+                popup.style.top = (Math.round(rect.top) + rect.height + 7) + 'px';
+                popup.style.left = (Math.round(rect.left + 2) + rect.width / 2) + 'px';
                 popup.style.transform = 'translateX(-50%)';
             }
         }
@@ -2226,6 +2293,14 @@
             overlayContainer.dataset.tool = toolKey;
             document.body.appendChild(overlayContainer);
         }
+        Object.assign(overlayContainer.style, {
+            position: 'fixed',
+            inset: '0',
+            overflow: 'clip',
+            contain: 'layout paint',
+            pointerEvents: 'none',
+            zIndex: '10004'
+        });
 
         function analyzeTableForA11yIssues(table) {
             const issues = [];
@@ -2332,11 +2407,11 @@
                         label.style.display = 'block';
                         border.style.display = 'block';
 
-                        label.style.top = window.scrollY + r.top - label.offsetHeight - 8 + 'px';
-                        label.style.left = window.scrollX + r.left + 'px';
+                        label.style.top = r.top - label.offsetHeight - 8 + 'px';
+                        label.style.left = r.left + 'px';
 
-                        border.style.top = window.scrollY + r.top - 8 + 'px';
-                        border.style.left = window.scrollX + r.left - 8 + 'px';
+                        border.style.top = r.top - 8 + 'px';
+                        border.style.left = r.left - 8 + 'px';
                         border.style.width = r.width + 16 + 'px';
                         border.style.height = r.height + 16 + 'px';
 

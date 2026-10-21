@@ -123,7 +123,7 @@ async function getSetting(key) {
 
 async function setSettingRuntime(k, val) {
     try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         const result = await chrome.tabs.sendMessage(tab.id, { action: "setSettingRuntime", key: k, value: val });
         if (result?.success === true) {
             return true;
@@ -139,7 +139,7 @@ async function setSettingRuntime(k, val) {
 
 async function getSettingRuntime(k) {
     try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         return await chrome.tabs.sendMessage(tab.id, { action: "getSettingRuntime", key: k});
     } catch (error) {
         console.warn("Unable to get runtime setting:", error);
@@ -304,7 +304,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     sendResponse(null);
                 });
             } else {
-                getSettingRuntime(message.value).then(sendResponse);
+                getSettingRuntime(message.value)
+                .then(sendResponse)
+                .catch(error => {
+                    console.warn("Failed to get runtime setting:", error);
+                    sendResponse(null);
+                });
             }
             return true;
         case "setSetting":
@@ -316,139 +321,152 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     sendResponse(false);
                 });
             } else {
-                setSettingRuntime(message.key, message.value).then(sendResponse);
+                setSettingRuntime(message.key, message.value)
+                .then(sendResponse)
+                .catch(error => {
+                    console.warn("Failed to set runtime setting:", error);
+                    sendResponse(false);
+                });
             }
             return true;
+        case "getTopPageUrl":
+            sendResponse(sender.tab?.url ?? null);
+            break;
         case "getDictionary":
-            getDictionary().then(sendResponse);
+            getDictionary()
+            .then(sendResponse)
+            .catch(error => {
+                console.warn("Failed to load dictionary:", error);
+                sendResponse("");
+            });
             return true;
         case "activateAllA11yTools":
-            handleToggleAll(message.action, sender.tab?.id);
+            handleToggleAll(message.action, sender).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "deactivateAllA11yTools":
-            handleToggleAll(message.action, sender.tab?.id);
+            handleToggleAll(message.action, sender).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "expandAllDropdowns":
-            handleToggleDropdowns(message.action, sender.tab?.id);
+            handleToggleDropdowns(message.action, sender.tab?.id).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "collapseAllDropdowns":
-            handleToggleDropdowns(message.action, sender.tab?.id);
+            handleToggleDropdowns(message.action, sender.tab?.id).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleImageOverlays":
-            handleToggleImageOverlays();
+            handleToggleImageOverlays().catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleIframeOverlays":
-            handleToggleIframeOverlays();
+            handleToggleIframeOverlays().catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleHeadingOverlays":
-            handleToggleHeadingOverlays();
+            handleToggleHeadingOverlays().catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleTableOverlays":
-            handleToggleTableOverlays();
+            handleToggleTableOverlays().catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleContrastHighlights":
-            handleToggleContrastHighlights();
+            handleToggleContrastHighlights().catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleLangTagHighlights":
-            handleToggleLangTagHighlights();
+            handleToggleLangTagHighlights().catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleTableCounting":
-            handleToggleTableCounting(0);
+            handleToggleTableCounting(0).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleIframeCounting":
-            handleToggleIframeCounting(0);
+            handleToggleIframeCounting(0).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleParagraphCounting":
-            handleToggleParagraphCounting(0);
+            handleToggleParagraphCounting(0).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleDefaultEditor":
-            handleToggleDefaultEditor();
+            handleToggleDefaultEditor().catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleDefaultDropdownMenus":
-            handleToggleDefaultDropdownMenus();
+            handleToggleDefaultDropdownMenus().catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleContrastInspector":
-            handleToggleContrastInspector(0);
+            handleToggleContrastInspector(0).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "downloadSLAFiles":
-            handleDownloadSLAFiles();
+            handleDownloadSLAFiles().catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleAlwaysRun":
             if (typeof message.value !== "boolean") {
                 console.error("Invalid setting value:", message.value);
                 return;
             }
-            handleToggleAlwaysRun(message.value);
+            handleToggleAlwaysRun(message.value).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleA11yHotkeys":
             if (typeof message.value !== "boolean") {
                 console.error("Invalid setting value:", message.value);
                 return;
             }
-            handleToggleA11yHotkeys(message.value);
+            handleToggleA11yHotkeys(message.value).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleDropdownHotkeys":
             if (typeof message.value !== "boolean") {
                 console.error("Invalid setting value:", message.value);
                 return;
             }
-            handleToggleDropdownHotkeys(message.value);
+            handleToggleDropdownHotkeys(message.value).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleH5PHotkeys":
             if (typeof message.value !== "boolean") {
                 console.error("Invalid setting value:", message.value);
                 return;
             }
-            handleToggleH5PHotkeys(message.value);
+            handleToggleH5PHotkeys(message.value).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleEditorHighlights":
             if (typeof message.value !== "boolean") {
                 console.error("Invalid setting value:", message.value);
                 return;
             }
-            handleToggleEditorHighlights(message.value);
+            handleToggleEditorHighlights(message.value).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleExtraEditorHelps":
             if (typeof message.value !== "boolean") {
                 console.error("Invalid setting value:", message.value);
                 return;
             }
-            handleToggleExtraEditorHelps(message.value);
+            handleToggleExtraEditorHelps(message.value).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleExpandEditBoxes":
             if (typeof message.value !== "boolean") {
                 console.error("Invalid setting value:", message.value);
                 return;
             }
-            handleToggleExpandEditBoxes(message.value);
+            handleToggleExpandEditBoxes(message.value).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleTableHeaders":
             if (typeof message.value !== "boolean") {
                 console.error("Invalid setting value:", message.value);
                 return;
             }
-            handleToggleTableHeaders(message.value);
+            handleToggleTableHeaders(message.value).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleCountModules":
             if (typeof message.value !== "boolean") {
                 console.error("Invalid setting value:", message.value);
                 return;
             }
-            handleToggleCountModules(message.value);
+            handleToggleCountModules(message.value).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "toggleCanvasFilePath":
             if (typeof message.value !== "boolean") {
                 console.error("Invalid setting value:", message.value);
                 return;
             }
-            handleToggleCanvasFilePath(message.value);
+            handleToggleCanvasFilePath(message.value).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
         case "changeH5PLanguage":
             if (typeof message.value !== "string") {
                 console.error("Invalid H5P language:", message.value);
                 return;
             }
-            handleChangeH5PLanguage(message.value);
+            handleChangeH5PLanguage(message.value).catch(error => console.warn(`Failed to handle ${message.action}`, error));
             break;
     }
 });
@@ -468,7 +486,7 @@ async function changeInputStyle(type, id, newValue) {
 
 // Reply with all settings to initialize the UI
 async function loadAllSettings() {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     const currentSettings = {};
     for (const key of Object.keys(DEFAULT_SETTINGS)) {
         if (["a11yAltText", "a11yIframes", "a11yHeadings", "a11yContrast", "a11yLang", "a11yTables"].includes(key)) {
@@ -509,12 +527,12 @@ const keyToColor = {
 const a11yKeys = ["a11yAltText", "a11yIframes", "a11yHeadings", "a11yContrast", "a11yLang", "a11yTables"];
 
 async function setA11ySetting(key, value) {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     await chrome.tabs.sendMessage(tab.id, { action: "toggleTool", key: key, value: value});
 }
 
 async function getA11ySetting(key) {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     try {
         const foundSetting = await chrome.tabs.sendMessage(tab.id, { action: "getA11ySetting", value: key });
         return foundSetting ?? false;
@@ -602,7 +620,7 @@ async function performToggleDropdowns(action, tabId) {
 }
 
 // Handlers with logic for each button (update settings, input style, and interact with userscripts)
-function handleToggleAll(toggleType, tabId) {
+async function handleToggleAll(toggleType, sender) {
     let action;
     if (toggleType === "activateAllA11yTools") {
         action = "activateAll";
@@ -610,6 +628,16 @@ function handleToggleAll(toggleType, tabId) {
         action = "deactivateAll";
     } else {
         return Promise.resolve();
+    }
+    let tabId = sender.tab?.id;
+    if (tabId == null) {
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+            tabId = tab?.id ?? null;
+        } catch (error) {
+            console.warn(`Could not find the active tab:`, error);
+            return;
+        }
     }
     return enqueueCommand(() => performToggleAll(action, tabId));
 }
@@ -719,7 +747,7 @@ async function handleToggleTableCounting(tries = 0) {
                 await changeInputStyle("buttonColorChange", "toggleTableCounting", false);
                 return;
             }
-            handleToggleTableCounting(tries + 1);
+            handleToggleTableCounting(tries + 1).catch(error => console.warn(`Failed toggle table counting retry ${tries + 1}:`, error));
         }, HANDLE_RETRY_DELAY);
         return;
     }
@@ -730,7 +758,7 @@ async function handleToggleTableCounting(tries = 0) {
         if (!setResponse) {
             return;
         }
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         await chrome.tabs.sendMessage(tab.id, { action: "toggleCounting", key: "table", value: newVal });
         successfullySet = true;
     } catch (error) {
@@ -753,7 +781,7 @@ async function handleToggleIframeCounting(tries = 0) {
                 await changeInputStyle("buttonColorChange", "toggleIframeCounting", false);
                 return;
             }
-            handleToggleIframeCounting(tries + 1);
+            handleToggleIframeCounting(tries + 1).catch(error => console.warn(`Failed toggle iframe counting retry ${tries + 1}:`, error));
         }, HANDLE_RETRY_DELAY);
         return;
     }
@@ -764,7 +792,7 @@ async function handleToggleIframeCounting(tries = 0) {
         if (!setResponse) {
             return;
         }
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         await chrome.tabs.sendMessage(tab.id, { action: "toggleCounting", key: "iframe", value: newVal });
         successfullySet = true;
     } catch (error) {
@@ -787,7 +815,7 @@ async function handleToggleParagraphCounting(tries = 0) {
                 await changeInputStyle("buttonColorChange", "toggleParagraphCounting", false);
                 return;
             }
-            handleToggleParagraphCounting(tries + 1);
+            handleToggleParagraphCounting(tries + 1).catch(error => console.warn(`Failed toggle paragraph counting retry ${tries + 1}:`, error));
         }, HANDLE_RETRY_DELAY);
         return;
     }
@@ -798,7 +826,7 @@ async function handleToggleParagraphCounting(tries = 0) {
         if (!setResponse) {
             return;
         }
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         await chrome.tabs.sendMessage(tab.id, { action: "toggleCounting", key: "p", value: newVal });
         successfullySet = true;
     } catch (error) {
@@ -822,7 +850,7 @@ async function handleToggleDefaultEditor() {
             if (!popupOpen) {
                 return;
             }
-            handleToggleDefaultEditor();
+            handleToggleDefaultEditor().catch(error => console.warn(`Failed toggle default editor counting retry ${tries + 1}:`, error));
         }, HANDLE_RETRY_DELAY);
         return;
     }
@@ -830,7 +858,7 @@ async function handleToggleDefaultEditor() {
     let successfullySet = false;
     try {
         await setSetting("defaultEditor", newVal);
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         await chrome.tabs.sendMessage(tab.id, { action: "toggleDefaultEditor", value: newVal });
         successfullySet = true;
     } catch (error) {
@@ -857,7 +885,7 @@ async function handleToggleDefaultDropdownMenus() {
             if (!popupOpen) {
                 return;
             }
-            handleToggleDefaultDropdownMenus();
+            handleToggleDefaultDropdownMenus().catch(error => console.warn("Failed toggle default dropdown menus retry:", error));
         }, HANDLE_RETRY_DELAY);
         return;
     }
@@ -865,7 +893,7 @@ async function handleToggleDefaultDropdownMenus() {
     let successfullySet = false;
     try {
         await setSetting("defaultDropdownMenus", newVal);
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         await chrome.tabs.sendMessage(tab.id, { action: "toggleDefaultDropdownMenus", value: newVal });
         successfullySet = true;
     } catch (error) {
@@ -891,7 +919,7 @@ async function handleToggleContrastInspector(tries = 0) {
                 await changeInputStyle("buttonColorChange", "toggleContrastInspector", false);
                 return;
             }
-            handleToggleContrastInspector(tries + 1);
+            handleToggleContrastInspector(tries + 1).catch(error => console.warn(`Failed toggle contrast inspector retry ${tries + 1}:`, error));
         }, HANDLE_RETRY_DELAY);
         return;
     }
@@ -902,7 +930,7 @@ async function handleToggleContrastInspector(tries = 0) {
         if (!setResponse) {
             return;
         }
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         await chrome.tabs.sendMessage(tab.id, { action: "toggleContrastInspector", value: newVal });
         successfullySet = true;
     } catch (error) {
@@ -923,7 +951,7 @@ async function handleToggleContrastInspector(tries = 0) {
 
 async function handleDownloadSLAFiles() {
     try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
         const currentUrl = tab?.url || "";
         if (USERSCRIPTS.find(script => script.file === "userscripts/downloadSLASpreadsheets.js")?.matches(currentUrl)) {
             await chrome.tabs.sendMessage(tab.id, { action: "downloadSLAFiles" });

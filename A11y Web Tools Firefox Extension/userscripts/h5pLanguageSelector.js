@@ -133,17 +133,8 @@
         try {
             const btnRect = btn.getBoundingClientRect();
             const containerRect = scrollable.getBoundingClientRect();
-
-            const desired =
-                scrollable.scrollTop +
-                (btnRect.top - containerRect.top) -
-                (containerRect.height / 2) +
-                (btnRect.height / 2);
-
-            scrollable.scrollTop = Math.max(
-                0,
-                Math.round(desired)
-            );
+            const desired = scrollable.scrollTop + (btnRect.top - containerRect.top);
+            scrollable.scrollTop = Math.max(0, Math.round(desired));
         } catch (error) {
             console.warn(
                 "Unable to calculate dropdown scroll position:",
