@@ -329,7 +329,7 @@
             .replace(/'/g, "&#39;");
     }
 
-    const updateFunctions = [];
+    const updateFunctions = new Set();
 
     // Tool implementations
     function runImageAltOverlay(container) {
@@ -351,6 +351,10 @@
             pointerEvents: 'none',
             zIndex: '10004'
         });
+
+        if (!overlayContainer._trackedElements) {
+            overlayContainer._trackedElements = new Set();
+        }
 
         overlayContainer._scanTimer = null;
         let scanRunning = false;
@@ -389,8 +393,10 @@
                 if (img.closest('.AccessibilityHelper')) return;
                 if (img._a11yImgProcessed) return;
                 img._a11yImgProcessed = true;
+                overlayContainer._trackedElements.add(img);
 
                 const altText = getAltText(img);
+                let currentAltText = altText;
                 const label = document.createElement('div');
                 label.className = 'A11y-img-label';
                 const safeAlt = escapeHtml(altText);
@@ -415,8 +421,12 @@
                         border.style.height = r.height + 16 + 'px';
                         
                         const newAltText = getAltText(img);
-                        const newSafeAlt = escapeHtml(newAltText);
-                        label.innerHTML = `<span style="color:${newAltText === "[Missing]" ? "#c00" : "#060"}">Alt Text: ${newSafeAlt}</span>`;
+                        if (newAltText !== currentAltText) {
+                            currentAltText = newAltText;
+                            const newSafeAlt = escapeHtml(newAltText);
+                            const newLabel = `<span style="color:${newAltText === "[Missing]" ? "#c00" : "#060"}">Alt Text: ${newSafeAlt}</span>`;
+                            label.innerHTML = newLabel;
+                        }
                     } else {
                         label.style.display = 'none';
                         border.style.display = 'none';
@@ -452,7 +462,7 @@
 
                 document.addEventListener('scroll', img._updateFunction, { capture: true, passive: true });
                 window.addEventListener('resize', img._updateFunction, { passive: true });
-                updateFunctions.push(img._updateFunction);
+                updateFunctions.add(img._updateFunction);
             });
         }
 
@@ -498,7 +508,8 @@
             overlayContainer.remove();
         }
 
-        document.querySelectorAll('img').forEach(img => {
+        const trackedElements = overlayContainer?._trackedElements;
+        trackedElements?.forEach(img => {
             if (img._a11yImgObserver) {
                 img._a11yImgObserver.disconnect();
                 delete img._a11yImgObserver;
@@ -510,14 +521,14 @@
             img.removeEventListener('pointerenter', img._highlightFunction);
             img.removeEventListener('pointerleave', img._unhighlightFunction);
 
-            const index = updateFunctions.indexOf(img._updateFunction);
-            if (index > -1) updateFunctions.splice(index, 1);
+            updateFunctions.delete(img._updateFunction);
 
             delete img._updateFunction;
             delete img._highlightFunction;
             delete img._unhighlightFunction;
             delete img._a11yImgProcessed;
         });
+        trackedElements?.clear();
     }
 
     function runIframeLabelOverlay(container) {
@@ -539,6 +550,10 @@
             pointerEvents: 'none',
             zIndex: '10004'
         });
+
+        if (!overlayContainer._trackedElements) {
+            overlayContainer._trackedElements = new Set();
+        }
 
         function getLabelText(f) {
             let title = f.title?.trim() || '[Empty]';
@@ -612,10 +627,12 @@
                 if (f.closest('.AccessibilityHelper')) return;
                 if (f._a11yIframeProcessed) return;
                 f._a11yIframeProcessed = true;
+                overlayContainer._trackedElements.add(f);
 
                 const label = document.createElement('div');
                 label.className = 'A11y-iframe-label';
-                label.innerHTML = getLabelText(f);
+                let currentLabel = getLabelText(f);
+                label.innerHTML = currentLabel;
                 overlayContainer.appendChild(label);
 
                 const border = document.createElement('div');
@@ -638,7 +655,11 @@
                         border.style.width = r.width + 16 + 'px';
                         border.style.height = r.height + 16 + 'px';
 
-                        label.innerHTML = getLabelText(f);
+                        const newLabel = getLabelText(f);
+                        if (currentLabel !== newLabel) {
+                            currentLabel = newLabel;
+                            label.innerHTML = newLabel;
+                        }
                     } else {
                         label.style.display = 'none';
                         border.style.display = 'none';
@@ -690,7 +711,7 @@
 
                 document.addEventListener('scroll', updatePositions, { capture: true, passive: true });
                 window.addEventListener('resize', updatePositions, { passive: true });
-                updateFunctions.push(updatePositions);
+                updateFunctions.add(updatePositions);
             });
         }
 
@@ -736,7 +757,8 @@
             overlayContainer.remove();
         }
 
-        document.querySelectorAll('iframe').forEach(f => {
+        const trackedElements = overlayContainer?._trackedElements;
+        trackedElements?.forEach(f => {
             if (f._a11yIframeObserver) {
                 f._a11yIframeObserver.disconnect();
                 delete f._a11yIframeObserver;
@@ -748,14 +770,14 @@
             f.removeEventListener('pointerenter', f._highlightFunction);
             f.removeEventListener('pointerleave', f._unhighlightFunction);
 
-            const index = updateFunctions.indexOf(f._updateFunction);
-            if (index > -1) updateFunctions.splice(index, 1);
+            updateFunctions.delete(f._updateFunction);
 
             delete f._updateFunction;
             delete f._highlightFunction;
             delete f._unhighlightFunction;
             delete f._a11yIframeProcessed;
         });
+        trackedElements?.clear();
     }
 
     function runHeadingTagOverlay(container) {
@@ -777,6 +799,10 @@
             pointerEvents: 'none',
             zIndex: '10005'
         });
+
+        if (!overlayContainer._trackedElements) {
+            overlayContainer._trackedElements = new Set();
+        }
 
         overlayContainer._scanTimer = null;
         let scanRunning = false;
@@ -808,6 +834,7 @@
                 if (h.closest('.AccessibilityHelper')) return;
                 if (h._a11yHeaderProcessed) return;
                 h._a11yHeaderProcessed = true;
+                overlayContainer._trackedElements.add(h);
 
                 const label = document.createElement('div');
                 label.className = 'A11y-header-label';
@@ -822,6 +849,10 @@
                     const r = h.getBoundingClientRect();
                     const visible = isActuallyVisible(h);
                     if (visible) {
+                        const newLabel = h.tagName;
+                        if (label.textContent !== newLabel) {
+                            label.textContent = newLabel;
+                        }
                         label.style.display = 'block';
                         border.style.display = 'block';
                         label.style.top = r.top - label.offsetHeight + 3 + 'px';
@@ -865,7 +896,7 @@
 
                 document.addEventListener('scroll', h._updateFunction, { capture: true, passive: true });
                 window.addEventListener('resize', h._updateFunction, { passive: true });
-                updateFunctions.push(h._updateFunction);
+                updateFunctions.add(h._updateFunction);
             });
         }
 
@@ -911,7 +942,8 @@
             overlayContainer.remove();
         }
 
-        document.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => {
+        const trackedElements = overlayContainer?._trackedElements;
+        trackedElements?.forEach(h => {
             if (h._a11yHeaderObserver) {
                 h._a11yHeaderObserver.disconnect();
                 delete h._a11yHeaderObserver;
@@ -923,14 +955,14 @@
             h.removeEventListener('pointerenter', h._highlightFunction);
             h.removeEventListener('pointerleave', h._unhighlightFunction);
 
-            const index = updateFunctions.indexOf(h._updateFunction);
-            if (index > -1) updateFunctions.splice(index, 1);
+            updateFunctions.delete(h._updateFunction);
 
             delete h._updateFunction;
             delete h._highlightFunction;
             delete h._unhighlightFunction;
             delete h._a11yHeaderProcessed;
         });
+        trackedElements?.clear();
     }
 
     function runIBTagHighlights(container) {
@@ -952,6 +984,10 @@
             pointerEvents: 'none',
             zIndex: '10006'
         });
+
+        if (!overlayContainer._trackedElements) {
+            overlayContainer._trackedElements = new Set();
+        }
 
         function hasText(el) {
             return Array.from(el.childNodes)
@@ -993,6 +1029,7 @@
                 if (!hasText(el)) return;
 
                 el._a11yIBProcessed = true;
+                overlayContainer._trackedElements.add(el);
 
                 const border = document.createElement('div');
                 border.className = 'A11y-ib-border';
@@ -1040,7 +1077,7 @@
 
                 document.addEventListener('scroll', updatePosition, { capture: true, passive: true });
                 window.addEventListener('resize', updatePosition, { passive: true });
-                updateFunctions.push(updatePosition);
+                updateFunctions.add(updatePosition);
             });
         }
 
@@ -1086,7 +1123,8 @@
             overlayContainer.remove();
         }
 
-        document.querySelectorAll('i, b').forEach(el => {
+        const trackedElements = overlayContainer?._trackedElements;
+        trackedElements?.forEach(el => {
             if (el._a11yIBObserver) {
                 el._a11yIBObserver.disconnect();
                 delete el._a11yIBObserver;
@@ -1098,14 +1136,14 @@
             el.removeEventListener('pointerenter', el._highlightFunction);
             el.removeEventListener('pointerleave', el._unhighlightFunction);
 
-            const idx = updateFunctions.indexOf(el._updateFunction);
-            if (idx > -1) updateFunctions.splice(idx, 1);
+            updateFunctions.delete(el._updateFunction);
 
             delete el._updateFunction;
             delete el._highlightFunction;
             delete el._unhighlightFunction;
             delete el._a11yIBProcessed;
         });
+        trackedElements?.clear();
     }
 
     function runContrastHighlights(container) {
@@ -1132,28 +1170,6 @@
             overlayContainer._trackedElements = new Set();
         }
 
-        function isFullyTransparent(color) {
-            if (!color) return true;
-
-            if (color === 'transparent') return true;
-
-            if (color.startsWith('rgba')) {
-                const parts = color.match(/[\d.]+/g);
-                if (!parts) return false;
-                const alpha = parseFloat(parts[3]);
-                return alpha === 0;
-            }
-
-            if (color.startsWith('hsla')) {
-                const parts = color.match(/[\d.]+/g);
-                if (!parts) return false;
-                const alpha = parseFloat(parts[3]);
-                return alpha === 0;
-            }
-
-            return false;
-        }
-
         function luminance(r, g, b) {
             const a = [r, g, b].map(v => {
                 v /= 255;
@@ -1162,92 +1178,195 @@
             return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
         }
 
-        function contrastRatio(rgb1, rgb2) {
-            const [r1, g1, b1] = rgb1.match(/\d+/g).map(Number);
-            const [r2, g2, b2] = rgb2.match(/\d+/g).map(Number);
+        function contrastRatio(color1, color2) {
+            const rgb1 = parseComputedRgb(color1);
+            const rgb2 = parseComputedRgb(color2);
 
-            const l1 = luminance(r1, g1, b1);
-            const l2 = luminance(r2, g2, b2);
+            if (!rgb1 || !rgb2 || rgb1.a !== 1 || rgb2.a !== 1) {
+                console.warn(`Unable to compute contrast ratio for ${color1} and ${color2}.`);
+                return null;
+            }
+
+            const l1 = luminance(rgb1.r, rgb1.g, rgb1.b);
+            const l2 = luminance(rgb2.r, rgb2.g, rgb2.b);
 
             return l1 > l2
                 ? (l1 + 0.05) / (l2 + 0.05)
             : (l2 + 0.05) / (l1 + 0.05);
         }
 
-        function getEffectiveColor(el) {
-            let current = el;
+        function parseComputedRgb(value) {
+            if (!value) return null;
 
-            while (current && current !== document.documentElement) {
-                const c = getComputedStyle(current).color;
-                if (c && c !== 'transparent') return c;
-                current = current.parentElement;
+            const text = value.trim().toLowerCase();
+
+            const srgbMatch = text.match(/^color\(\s*srgb\s+(.+)\)$/);
+            if (srgbMatch) {
+                const pieces = srgbMatch[1].split("/");
+                if (pieces.length > 2) return null;
+
+                const channels = pieces[0].trim().split(/\s+/);
+                if (channels.length !== 3) return null;
+
+                function parseSrgbChannel(channel) {
+                    const value = parseFloat(channel);
+                    if (!Number.isFinite(value)) return null;
+
+                    const normalized = channel.endsWith("%") ? value / 100 : value;
+                    if (normalized < 0 || normalized > 1) return null;
+
+                    return normalized * 255;
+                }
+
+                const [r, g, b] = channels.map(parseSrgbChannel);
+
+                const alphaText = pieces[1]?.trim();
+                const alphaValue = alphaText === undefined
+                    ? 1
+                    : parseFloat(alphaText) / (alphaText.endsWith("%") ? 100 : 1);
+
+                if (
+                    r === null || g === null || b === null ||
+                    !Number.isFinite(alphaValue)
+                ) {
+                    return null;
+                }
+
+                return { r, g, b, a: Math.min(1, Math.max(0, alphaValue)) };
             }
 
-            return getComputedStyle(document.body).color || 'rgb(0,0,0)';
+            if (text === "transparent") {
+                return { r: 0, g: 0, b: 0, a: 0 };
+            }
+
+            const match = text.match(/^rgba?\((.*)\)$/);
+            if (!match) return null;
+
+            const [channelsText, slashAlpha] = match[1].split("/");
+            let parts = channelsText.includes(",")
+                ? channelsText.split(",").map(part => part.trim())
+                : channelsText.trim().split(/\s+/);
+
+            let alphaText = slashAlpha?.trim();
+
+            if (parts.length === 4 && alphaText === undefined) {
+                alphaText = parts.pop();
+            }
+
+            if (parts.length !== 3) return null;
+
+            function parseChannel(channel) {
+                const number = parseFloat(channel);
+                if (!Number.isFinite(number)) return null;
+
+                return channel.endsWith("%")
+                    ? Math.min(255, Math.max(0, number * 2.55))
+                    : Math.min(255, Math.max(0, number));
+            }
+
+            function parseAlpha(alpha) {
+                if (alpha === undefined) return 1;
+
+                const number = parseFloat(alpha);
+                if (!Number.isFinite(number)) return null;
+
+                return Math.min(1, Math.max(0, alpha.endsWith("%") ? number / 100 : number));
+            }
+
+            const [r, g, b] = parts.map(parseChannel);
+            const a = parseAlpha(alphaText);
+
+            if (r === null || g === null || b === null || a === null) return null;
+
+            return { r, g, b, a };
+        }
+
+        function compositeOver(source, backdrop) {
+            const a = source.a;
+            return {
+                r: source.r * a + backdrop.r * (1 - a),
+                g: source.g * a + backdrop.g * (1 - a),
+                b: source.b * a + backdrop.b * (1 - a),
+                a: 1
+            };
+        }
+
+        function formatRgb(color) {
+            const formatChannel = value => Number(value.toFixed(3));
+            return `rgb(${formatChannel(color.r)}, ${formatChannel(color.g)}, ${formatChannel(color.b)})`;
+        }
+
+        function getEffectiveColor(el, bg) {
+            const text = getComputedStyle(el).color;
+            const color = parseComputedRgb(text);
+            const bg_color = parseComputedRgb(bg);
+
+            if (!color) {
+                console.warn(`Unable to parse RGB for ${text}.`);
+                return null;
+            }
+            if (!bg_color) {
+                console.warn(`Unable to parse RGB for ${bg}`);
+                return null;
+            }
+
+            return formatRgb(compositeOver(color, bg_color));
         }
 
         function getEffectiveBackground(el) {
-            let current = el;
+            const layers = [];
 
-            while (current && current !== document.documentElement) {
-                const bg = getComputedStyle(current).backgroundColor;
-
-                if (bg && !isFullyTransparent(bg)) {
-                    return bg;
+            for (let current = el; current; current = current.parentElement) {
+                const cssColor = getComputedStyle(current).backgroundColor;
+                const color = parseComputedRgb(cssColor);
+                if (!color) {
+                    console.warn(`Unable to parse RGB for ${cssColor}.`);
+                    return null;
                 }
-
-                current = current.parentElement;
+                if (color.a > 0) {
+                    layers.push(color);
+                    if (color.a === 1) break;
+                }
+                if (current === document.documentElement) break;
             }
 
-            return getComputedStyle(document.body).backgroundColor || 'rgb(255,255,255)';
+            let result = { r: 255, g: 255, b: 255, a: 1 };
+
+            for (let i = layers.length - 1; i >= 0; i--) {
+                result = compositeOver(layers[i], result);
+            }
+
+            return formatRgb(result);
+        }
+
+        function getContrastThreshold(style) {
+            const fontSize = parseFloat(style.fontSize) || 0;
+            const fontWeight = parseInt(style.fontWeight, 10) || 400;
+            const isLargeText =
+                fontSize >= 24 ||
+                (fontSize >= 18.67 && fontWeight >= 700);
+
+            return isLargeText ? 3.0 : 4.5;
         }
 
         function passesContrast(el) {
             const style = getComputedStyle(el);
-            const color = getEffectiveColor(el);
             const bg = getEffectiveBackground(el);
+            if (!bg) return null;
+            const color = getEffectiveColor(el, bg);
+            if (!color) return null;
 
             const ratio = contrastRatio(color, bg);
+            if (ratio === null) return null;
 
-            const fontSize = parseFloat(style.fontSize) || 0;
-            const fontWeight = parseInt(style.fontWeight, 10) || 400;
-
-            const isLargeText =
-                  fontSize >= 18 ||
-                  (fontSize >= 14 && fontWeight >= 700);
-
-            const threshold = isLargeText ? 3.0 : 4.5;
+            const threshold = getContrastThreshold(style);
 
             return { passes: ratio >= threshold, ratio, threshold, color, bg };
         }
 
-        function findClosestColor(el) {
+        function findClosestColor(el, textColor, backgroundColor) {
             const style = getComputedStyle(el);
-            const textColor = getEffectiveColor(el);
-            const backgroundColor = getEffectiveBackground(el);
-
-            const fontSize = parseFloat(style.fontSize) || 0;
-            const fontWeight = parseInt(style.fontWeight, 10) || 400;
-
-            const isLargeText =
-                fontSize >= 18 ||
-                (fontSize >= 14 && fontWeight >= 700);
-
-            const threshold = isLargeText ? 3.0 : 4.5;
-
-            function parseRgb(rgb) {
-                const values = rgb.match(/\d+(?:\.\d+)?/g);
-
-                if (!values || values.length < 3) {
-                    return null;
-                }
-
-                return {
-                    r: Number(values[0]),
-                    g: Number(values[1]),
-                    b: Number(values[2])
-                };
-            }
+            const threshold = getContrastThreshold(style);
 
             function rgbToHsl(r, g, b) {
                 r /= 255;
@@ -1343,6 +1462,10 @@
                         rgbString(candidate),
                         rgbString(fixedColor)
                     );
+                    if (ratio === null) {
+                        console.warn(`Unable to compute contrast ratio for ${rgbString(candidate)} and ${rgbString(fixedColor)}.`);
+                        return null;
+                    }
 
                     if (ratio >= threshold) {
                         const distance = Math.abs(lightness - hsl.l);
@@ -1359,11 +1482,11 @@
                     }
                 }
 
-                return closest ? closest.color : rgbString(colorToChange);
+                return closest?.color ?? null;
             }
 
-            const text = parseRgb(textColor);
-            const background = parseRgb(backgroundColor);
+            const text = parseComputedRgb(textColor);
+            const background = parseComputedRgb(backgroundColor);
 
             if (!text || !background) {
                 return {
@@ -1387,28 +1510,27 @@
                 background: null
             };
 
-            if (closestTextColor !== textColor) {
+            if (closestTextColor && closestTextColor !== textColor) {
                 possibleChanges.text = closestTextColor;
             }
 
-            if (closestBackgroundColor !== backgroundColor) {
+            if (closestBackgroundColor && closestBackgroundColor !== backgroundColor) {
                 possibleChanges.background = closestBackgroundColor;
             }
 
             return possibleChanges;
         }
 
-        function rgbToHex(rgb) {
-            const values = rgb.match(/\d+/g);
+        function rgbToHex(color) {
+            const rgb = parseComputedRgb(color);
 
-            if (!values || values.length < 3) {
-                return null;
-            }
+            if (!rgb || rgb.a !== 1) return null;
 
-            return '#' + values
-                .slice(0, 3)
-                .map(value => Number(value).toString(16).padStart(2, '0'))
-                .join('')
+            return "#" + [rgb.r, rgb.g, rgb.b]
+                .map(channel => Math.round(channel)
+                    .toString(16)
+                    .padStart(2, "0"))
+                .join("")
                 .toUpperCase();
         }
 
@@ -1480,7 +1602,7 @@
                 if (!text) continue;
 
                 const passesContrastResult = passesContrast(el);
-                if (passesContrastResult.passes) continue;
+                if (!passesContrastResult || passesContrastResult.passes) continue;
 
                 el._a11yContrastProcessed = true;
                 overlayContainer._trackedElements.add(el);
@@ -1495,42 +1617,29 @@
 
                 const defaultColor = document.createElement('div');
                 defaultColor.className = 'A11y-contrast-segment';
-                defaultColor.style.backgroundColor = getEffectiveBackground(el);
-                defaultColor.style.color = getEffectiveColor(el);
-                defaultColor.innerHTML = `${rgbToHex(passesContrastResult.color)} on ${rgbToHex(passesContrastResult.bg)} fails color contrast.<br/>(${passesContrastResult.ratio.toFixed(2)}:1, ${passesContrastResult.threshold.toFixed(2)}:1 required)`;
+                defaultColor.style.backgroundColor = passesContrastResult.bg;
+                defaultColor.style.color = passesContrastResult.color;
+                defaultColor.innerHTML = `${rgbToHex(passesContrastResult.color)} on ${rgbToHex(passesContrastResult.bg)} fails color contrast.<br>(${passesContrastResult.ratio.toFixed(2)}:1, ${passesContrastResult.threshold.toFixed(2)}:1 required)`;
                 recommendedColors.appendChild(defaultColor);
 
-                const newColors = findClosestColor(el);
-                let newText;
-                let newBackground;
-
-                if (newColors.text) {
-                    newText = document.createElement('div');
-                    newText.className = 'A11y-contrast-segment';
-                    newText.style.backgroundColor = getEffectiveBackground(el);
-                    newText.style.color = newColors.text;
-                    newText.innerHTML = `Change the text to ${rgbToHex(newColors.text)}.<br/>(Shift + click to copy hex code)`;
-                    recommendedColors.appendChild(newText);
-                }
-
-                if (newColors.background) {
-                    newBackground = document.createElement('div');
-                    newBackground.className = 'A11y-contrast-segment';
-                    newBackground.style.backgroundColor = newColors.background;
-                    newBackground.style.color = getEffectiveColor(el);
-                    newBackground.innerHTML = `Or change the background to ${rgbToHex(newColors.background)}.<br/>(Shift + right-click to copy hex code)`;
-                    recommendedColors.appendChild(newBackground);
-                }
+                let newColors = { text: null, background: null };
+                const newText = document.createElement('div');
+                newText.className = 'A11y-contrast-segment';
+                const newBackground = document.createElement('div');
+                newBackground.className = 'A11y-contrast-segment';
 
                 function updatePosition() {
                     const r = el.getBoundingClientRect();
 
                     if (isActuallyVisible(el)) {
                         const newPassesContrastResult = passesContrast(el);
-                        if (newPassesContrastResult.passes) {
+                        if (!newPassesContrastResult || newPassesContrastResult.passes) {
+                            hasContrastFailure = false;
                             border.style.display = 'none';
+                            hideContrastHighlight();
                             return;
                         }
+                        hasContrastFailure = true;
                         border.style.display = 'block';
                         border.style.top = Math.round(r.top - 4) + 'px';
                         border.style.left = Math.round(r.left - 4) + 'px';
@@ -1540,40 +1649,64 @@
                         recommendedColors.style.left = (Math.round(r.left + 2) + r.width / 2) + "px";
                         recommendedColors.style.transform = 'translate(-50%, -100%)';
 
-                        defaultColor.style.backgroundColor = getEffectiveBackground(el);
-                        defaultColor.style.color = getEffectiveColor(el);
-                        defaultColor.innerHTML = `${rgbToHex(newPassesContrastResult.color)} on ${rgbToHex(newPassesContrastResult.bg)} fails color contrast.<br/>(${newPassesContrastResult.ratio.toFixed(2)}:1, ${newPassesContrastResult.threshold.toFixed(2)}:1 required)`;
-                        const newNewColors = findClosestColor(el);
-                        if (newNewColors.text) {
-                            newText.style.backgroundColor = getEffectiveBackground(el);
-                            newText.style.color = newNewColors.text;
-                            newText.innerHTML = `Change the text to ${rgbToHex(newNewColors.text)}.<br/>(Shift + click to copy hex code)`;
+                        defaultColor.style.backgroundColor = newPassesContrastResult.bg;
+                        defaultColor.style.color = newPassesContrastResult.color;
+                        const newLabelDefaultColor = `${rgbToHex(newPassesContrastResult.color)} on ${rgbToHex(newPassesContrastResult.bg)} fails color contrast.<br>(${newPassesContrastResult.ratio.toFixed(2)}:1, ${newPassesContrastResult.threshold.toFixed(2)}:1 required)`;
+                        if (defaultColor.innerHTML !== newLabelDefaultColor) {
+                            defaultColor.innerHTML = newLabelDefaultColor;
+                        }
+                        newColors = findClosestColor(el, newPassesContrastResult.color, newPassesContrastResult.bg);
+                        if (newColors.text) {
+                            newText.style.backgroundColor = newPassesContrastResult.bg;
+                            newText.style.color = newColors.text;
+                            const newLabelNewText = `Change the text to ${rgbToHex(newColors.text)}.<br>(Shift + click to copy hex code)`;
+                            if (newText.innerHTML !== newLabelNewText) {
+                                newText.innerHTML = newLabelNewText;
+                            }
                             if (!recommendedColors.contains(newText)) {
                                 recommendedColors.appendChild(newText);
                             }
                         } else {
                             newText.remove();
                         }
-                        if (newNewColors.background) {
-                            newBackground.style.backgroundColor = newNewColors.background;
-                            newBackground.style.color = getEffectiveColor(el);
-                            newBackground.innerHTML = `Or change the background to ${rgbToHex(newNewColors.background)}.<br/>(Shift + right-click to copy hex code)`;
+                        if (newColors.background) {
+                            newBackground.style.backgroundColor = newColors.background;
+                            newBackground.style.color = newPassesContrastResult.color;
+                            const newLabelNewBackground = `Or change the background to ${rgbToHex(newColors.background)}.<br>(Shift + right-click to copy hex code)`;
+                            if (newBackground.innerHTML !== newLabelNewBackground) {
+                                newBackground.innerHTML = newLabelNewBackground;
+                            }
                             if (!recommendedColors.contains(newBackground)) {
                                 recommendedColors.appendChild(newBackground);
                             }
                         } else {
                             newBackground.remove();
                         }
+                        if (sourceHovered || popupHovered) {
+                            show();
+                        }
                     } else {
+                        hasContrastFailure = false;
                         border.style.display = 'none';
+                        hideContrastHighlight();
                     }
                 }
 
                 let sourceHovered = false;
                 let popupHovered = false;
                 let hideTimer;
+                let hasContrastFailure = true;
+
+                function hideContrastHighlight() {
+                    clearTimeout(hideTimer);
+                    sourceHovered = false;
+                    popupHovered = false;
+                    border.classList.remove('A11y-contrast-highlight');
+                    recommendedColors.classList.remove('visible');
+                }
 
                 function show() {
+                    if (!hasContrastFailure) return;
                     clearTimeout(hideTimer);
                     border.classList.add('A11y-contrast-highlight');
                     recommendedColors.classList.add('visible');
@@ -1670,7 +1803,7 @@
                 document.addEventListener('scroll', updatePosition, { capture: true, passive: true });
                 window.addEventListener('resize', updatePosition, { passive: true });
 
-                updateFunctions.push(updatePosition);
+                updateFunctions.add(updatePosition);
 
                 updatePosition();
             }
@@ -1762,53 +1895,50 @@
             if (overlayContainer._copyColorMessageHandler) {
                 window.removeEventListener("message", overlayContainer._copyColorMessageHandler);
             }
-            const trackedElements = overlayContainer._trackedElements;
 
-            if (trackedElements) {
-                trackedElements.forEach(el => {
-                    if (el._contrastObserver) {
-                        el._contrastObserver.disconnect();
-                        delete el._contrastObserver;
-                    }
+            const trackedElements = overlayContainer?._trackedElements;
+            trackedElements?.forEach(el => {
+                if (el._contrastObserver) {
+                    el._contrastObserver.disconnect();
+                    delete el._contrastObserver;
+                }
 
-                    document.removeEventListener('scroll', el._contrastUpdate, { capture: true, passive: true });
-                    window.removeEventListener('resize', el._contrastUpdate, { passive: true });
+                document.removeEventListener('scroll', el._contrastUpdate, { capture: true, passive: true });
+                window.removeEventListener('resize', el._contrastUpdate, { passive: true });
 
-                    el.removeEventListener('pointerenter', el._contrastHighlight);
-                    el.removeEventListener('pointerleave', el._contrastUnhighlight);
-                    el._contrastPopup.removeEventListener('pointerenter', el._contrastHighlightPopup);
-                    el._contrastPopup.removeEventListener('pointerleave', el._contrastUnhighlightPopup);
-                    el.removeEventListener('click', el._contrastCopyText);
-                    el.removeEventListener('contextmenu', el._contrastCopyBackground);
-                    el.removeEventListener('pointerdown', el._preventHighlightText);
+                el.removeEventListener('pointerenter', el._contrastHighlight);
+                el.removeEventListener('pointerleave', el._contrastUnhighlight);
+                el._contrastPopup.removeEventListener('pointerenter', el._contrastHighlightPopup);
+                el._contrastPopup.removeEventListener('pointerleave', el._contrastUnhighlightPopup);
+                el.removeEventListener('click', el._contrastCopyText);
+                el.removeEventListener('contextmenu', el._contrastCopyBackground);
+                el.removeEventListener('pointerdown', el._preventHighlightText);
 
-                    const idx = updateFunctions.indexOf(el._contrastUpdate);
-                    if (idx > -1) updateFunctions.splice(idx, 1);
+                updateFunctions.delete(el._contrastUpdate);
 
-                    if (el._contrastBorder) {
-                        el._contrastBorder.remove();
-                    }
-                    if (el._contrastPopup) {
-                        el._contrastPopup.remove();
-                    }
+                if (el._contrastBorder) {
+                    el._contrastBorder.remove();
+                }
+                if (el._contrastPopup) {
+                    el._contrastPopup.remove();
+                }
 
-                    delete el._contrastBorder;
-                    delete el._contrastPopup;
-                    delete el._contrastUpdate;
-                    delete el._contrastHighlight;
-                    delete el._contrastUnhighlight;
-                    delete el._contrastHighlightPopup;
-                    delete el._contrastUnhighlightPopup;
-                    delete el._contrastCopyText;
-                    delete el._contrastCopyBackground;
-                    delete el._a11yContrastProcessed;
-                    delete el._preventHighlightText;
-                });
-                trackedElements.clear();
-            }
+                delete el._contrastBorder;
+                delete el._contrastPopup;
+                delete el._contrastUpdate;
+                delete el._contrastHighlight;
+                delete el._contrastUnhighlight;
+                delete el._contrastHighlightPopup;
+                delete el._contrastUnhighlightPopup;
+                delete el._contrastCopyText;
+                delete el._contrastCopyBackground;
+                delete el._a11yContrastProcessed;
+                delete el._preventHighlightText;
+            });
+            trackedElements?.clear();
+
             overlayContainer.remove();
         }
-
     }
 
     async function runLangHighlights(container) {
@@ -1893,12 +2023,31 @@
 
             const confidenceLang = document.createElement('div');
             confidenceLang.className = 'A11y-lang-segment';
-            if (Number.isNaN(Number(confidence))) {
-                confidenceLang.textContent = `Confidence: ${confidence}`;
-            } else {
-                confidenceLang.textContent = 'Confidence: ' + (confidence * 100).toFixed(2) + '%';
-            }
             langInfo.appendChild(confidenceLang);
+
+            function updateInfo(declaredLanguage, detectedLanguage, confidence) {
+                const newDeclaredLang = 'Declared Language: ' + declaredLanguage;
+                if (declaredLang.textContent !== newDeclaredLang) {
+                    declaredLang.textContent = newDeclaredLang;
+                }
+                const newDetectedLang = 'Detected Language: ' + detectedLanguage;
+                if (detectedLang.textContent !== newDetectedLang) {
+                    detectedLang.textContent = newDetectedLang;
+                }
+                if (Number.isNaN(Number(confidence))) {
+                    const newConfidenceLang = `Confidence: ${confidence}`;
+                    if (confidenceLang.textContent !== newConfidenceLang) {
+                        confidenceLang.textContent = newConfidenceLang;
+                    }
+                } else {
+                    const newConfidenceLang = 'Confidence: ' + (confidence * 100).toFixed(2) + '%';
+                    if (confidenceLang.textContent !== newConfidenceLang) {
+                        confidenceLang.textContent = newConfidenceLang;
+                    }
+                }
+            }
+
+            updateInfo(declaredLanguage, detectedLanguage, confidence);
 
             let sourceHovered = false;
             let popupHovered = false;
@@ -1940,7 +2089,7 @@
                 scheduleHide();
             }
 
-            return { border: el, popup: langInfo, highlightBorder, unhighlightBorder, highlightPopup, unhighlightPopup };
+            return { border: el, popup: langInfo, updateInfo, highlightBorder, unhighlightBorder, highlightPopup, unhighlightPopup };
         }
 
         function assureNodeMap(textNode) {
@@ -1952,7 +2101,7 @@
             return nodeMap;
         }
 
-        function processDictionary(textNode, nearestLang, declaredLanguage, parent, seenEntries) {
+        async function processDictionary(textNode, nearestLang, declaredLanguage, parent, seenEntries) {
             const wordRegex = /[\p{L}]+/gu;
             let match;
 
@@ -1980,6 +2129,7 @@
                     const unhighlightBorder = borderResult.unhighlightBorder;
                     const highlightPopup = borderResult.highlightPopup;
                     const unhighlightPopup = borderResult.unhighlightPopup;
+                    const updateInfo = borderResult.updateInfo;
 
                     parent.addEventListener('pointerenter', highlightBorder);
                     parent.addEventListener('pointerleave', unhighlightBorder);
@@ -1996,14 +2146,15 @@
                         highlightBorder,
                         unhighlightBorder,
                         highlightPopup,
-                        unhighlightPopup
+                        unhighlightPopup,
+                        updateInfo
                     };
 
                     nodeMap.set(start, entry);
                 }
 
                 seenEntries.add(entry);
-                updateEntry(entry);
+                await updateEntry(entry);
             }
         }
 
@@ -2063,7 +2214,7 @@
                 if (!text) continue;
 
                 if (text.length < LANGUAGE_MODEL_CHARACTER_THRESHOLD) {
-                    processDictionary(textNode, nearestLang, declaredLanguage, parent, seenEntries);
+                    await processDictionary(textNode, nearestLang, declaredLanguage, parent, seenEntries);
                     continue;
                 }
                 try {
@@ -2089,6 +2240,7 @@
                             const unhighlightBorder = borderResult.unhighlightBorder;
                             const highlightPopup = borderResult.highlightPopup;
                             const unhighlightPopup = borderResult.unhighlightPopup;
+                            const updateInfo = borderResult.updateInfo;
 
                             parent.addEventListener('pointerenter', highlightBorder);
                             parent.addEventListener('pointerleave', unhighlightBorder);
@@ -2105,21 +2257,22 @@
                                 highlightBorder,
                                 unhighlightBorder,
                                 highlightPopup,
-                                unhighlightPopup
+                                unhighlightPopup,
+                                updateInfo
                             };
 
                             nodeMap.set(start, entry);
                         }
 
                         seenEntries.add(entry);
-                        updateEntry(entry);
+                        await updateEntry(entry);
                     } else {
-                        processDictionary(textNode, nearestLang, declaredLanguage, parent, seenEntries);
+                        await processDictionary(textNode, nearestLang, declaredLanguage, parent, seenEntries);
                         continue;
                     }
                 } catch (error) {
                     console.error('A11y language model error:', error);
-                    processDictionary(textNode, nearestLang, declaredLanguage, parent, seenEntries);
+                    await processDictionary(textNode, nearestLang, declaredLanguage, parent, seenEntries);
                 }
             }
 
@@ -2141,8 +2294,8 @@
             }
         }
 
-        function updateEntry(entry) {
-            const { textNode, start, length, border, popup } = entry;
+        async function updateEntry(entry) {
+            const { textNode, start, border, popup } = entry;
 
             if (!document.contains(textNode)) {
                 const nodeMap = overlayContainer._trackedMatches.get(textNode);
@@ -2162,21 +2315,88 @@
             }
 
             const parent = textNode.parentElement;
+            const text = textNode.textContent.trim();
+            const nearestLang = getNearestLang(parent);
+            const declaredLanguage = nearestLang ? nearestLang.split('-')[0].toLowerCase() : 'en';
 
-            if (!isActuallyVisible(parent)) {
+            function hideEntry() {
                 border.style.display = 'none';
+                popup.classList.remove('visible');
+            }
+
+            if (!text || !isActuallyVisible(parent) || shouldSkip(parent)) {
+                hideEntry();
                 return;
             }
 
+            let match = null;
+            if (text.length >= LANGUAGE_MODEL_CHARACTER_THRESHOLD) {
+                const result = await predictLanguage(text);
+                if (
+                    textNode.textContent.trim() !== text ||
+                    !document.contains(textNode)
+                ) {
+                    hideEntry();
+                    requestScan();
+                    return;
+                }
+
+                const detectedLanguage = result.language.toLowerCase();
+                if (
+                    result.confidence >= LANGUAGE_MODEL_CONFIDENCE_THRESHOLD &&
+                    detectedLanguage !== declaredLanguage
+                ) {
+                    match = {
+                        start: 0,
+                        length: textNode.textContent.length,
+                        detectedLanguage,
+                        confidence: result.confidence
+                    };
+                } else if (!(result.confidence >= LANGUAGE_MODEL_CONFIDENCE_THRESHOLD)) {
+                    match = findDictionaryMatch(textNode, nearestLang, start);
+                }
+            } else {
+                match = findDictionaryMatch(textNode, nearestLang, start);
+            }
+
+            if (!match) {
+                hideEntry();
+                return;
+            }
+
+            entry.rangeStart = match.start;
+            entry.length = match.length;
+            if (entry.updateInfo) {
+                entry.updateInfo(declaredLanguage, match.detectedLanguage, match.confidence);
+            } else {
+                const segments = popup.querySelectorAll('.A11y-lang-segment');
+                if (segments.length >= 3) {
+                    const newSegment0 = 'Declared Language: ' + declaredLanguage;
+                    if (segments[0].textContent !== newSegment0) {
+                        segments[0].textContent = newSegment0;
+                    }
+                    const newSegment1 = 'Detected Language: ' + match.detectedLanguage;
+                    if (segments[1].textContent !== newSegment1) {
+                        segments[1].textContent = newSegment1;
+                    }
+                    const newSegment2 = Number.isNaN(Number(match.confidence))
+                        ? `Confidence: ${match.confidence}`
+                        : 'Confidence: ' + (match.confidence * 100).toFixed(2) + '%';
+                    if (segments[2].textContent !== newSegment2) {
+                        segments[2].textContent = newSegment2;
+                    }
+                }
+            }
+
             const range = document.createRange();
-            range.setStart(textNode, start);
-            range.setEnd(textNode, start + length);
+            range.setStart(textNode, match.start);
+            range.setEnd(textNode, match.start + match.length);
 
             const rect = range.getBoundingClientRect();
             range.detach();
 
             if (rect.width === 0 || rect.height === 0) {
-                border.style.display = 'none';
+                hideEntry();
                 return;
             }
 
@@ -2192,10 +2412,33 @@
             }
         }
 
-        function updateAll() {
+        function findDictionaryMatch(textNode, nearestLang, start) {
+            if (
+                englishWords.size === 0 ||
+                (nearestLang && nearestLang.split('-')[0].toLowerCase() !== 'en')
+            ) {
+                return null;
+            }
+
+            const wordRegex = /[\p{L}]+/gu;
+            let match;
+            while ((match = wordRegex.exec(textNode.textContent)) !== null) {
+                if (match.index !== start) continue;
+                if (englishWords.has(match[0].toLowerCase())) return null;
+                return {
+                    start: match.index,
+                    length: match[0].length,
+                    detectedLanguage: 'non-english',
+                    confidence: 'Unknown'
+                };
+            }
+            return null;
+        }
+
+        async function updateAll() {
             for (const [, nodeMap] of overlayContainer._trackedMatches) {
                 for (const entry of nodeMap.values()) {
-                    updateEntry(entry);
+                    await updateEntry(entry);
                 }
             }
         }
@@ -2220,7 +2463,7 @@
             subtree: true,
             characterData: true,
             attributes: true,
-            attributeFilter: ['style', 'class', 'hidden', 'open']
+            attributeFilter: ['style', 'class', 'hidden', 'open', 'lang']
         });
 
         const scrollHandler = () => updateAll();
@@ -2230,7 +2473,7 @@
         window.addEventListener('resize', resizeHandler, { passive: true });
 
         overlayContainer._updateFn = updateAll;
-        updateFunctions.push(overlayContainer._updateFn);
+        updateFunctions.add(overlayContainer._updateFn);
 
         overlayContainer._cleanup = {
             observer,
@@ -2256,7 +2499,7 @@
             window.removeEventListener('resize', cleanup.resizeHandler, { passive: true });
         }
 
-        const matches = overlayContainer._trackedMatches;
+        const matches = overlayContainer?._trackedMatches;
 
         if (matches) {
             for (const nodeMap of matches.values()) {
@@ -2275,8 +2518,7 @@
         }
 
         if (overlayContainer._updateFn) {
-            const idx = updateFunctions.indexOf(overlayContainer._updateFn);
-            if (idx > -1) updateFunctions.splice(idx, 1);
+            updateFunctions.delete(overlayContainer._updateFn);
         }
 
         overlayContainer.remove();
@@ -2301,6 +2543,26 @@
             pointerEvents: 'none',
             zIndex: '10004'
         });
+
+        if (!overlayContainer._trackedElements) {
+            overlayContainer._trackedElements = new Set();
+        }
+
+        function highlightHeaders(table) {
+            table.querySelectorAll('th').forEach(header => {
+                header.style.outline = "2px solid rgba(255, 128, 0, 0.6)";
+                header.style.outlineOffset = "-2px";
+                header.style.setProperty('--a11y-table-header-highlighted', 'true');
+            });
+        }
+
+        function clearHeaderHighlights(table) {
+            table.querySelectorAll('[style*="--a11y-table-header-highlighted"]').forEach(header => {
+                header.style.outline = '';
+                header.style.outlineOffset = '';
+                header.style.removeProperty('--a11y-table-header-highlighted');
+            });
+        }
 
         function analyzeTableForA11yIssues(table) {
             const issues = [];
@@ -2370,39 +2632,55 @@
                 if (table.closest('.AccessibilityHelper')) return;
                 if (table._a11yTableProcessed) return;
 
+                clearHeaderHighlights(table);
+
                 if (tableHeaderSetting) {
-                    const headers = table.querySelectorAll('th');
-                    headers.forEach(th => {
-                        th.style.outline = "2px solid rgba(255, 128, 0, 0.6)";
-                        th.style.outlineOffset = "-2px";
-                    });
+                    highlightHeaders(table);
                 }
 
                 table._a11yTableProcessed = true;
+                overlayContainer._trackedElements.add(table);
                 
                 const issues = analyzeTableForA11yIssues(table);
-                if (issues.length === 0) return;
 
                 const label = document.createElement('div');
                 label.className = 'A11y-table-label';
-                label.innerHTML = "<span style='color: #c00;'>" + issues.join('\n') + "</span>";
+                label.innerHTML = '<span style="color: #c00;">' + issues.join('\n') + '</span>';
                 overlayContainer.appendChild(label);
 
                 const border = document.createElement('div');
                 border.className = 'A11y-table-border';
                 overlayContainer.appendChild(border);
 
+                if (issues.length === 0) {
+                    label.style.display = 'none';
+                    border.style.display = 'none';
+                }
+
                 function updatePositions() {
-                    const r = table.getBoundingClientRect();
+                    clearHeaderHighlights(table);
+
                     const visible = isActuallyVisible(table);
 
                     if (visible) {
+                        if (tableHeaderSetting) {
+                            highlightHeaders(table);
+                        }
+                        
                         const newIssues = analyzeTableForA11yIssues(table);
+
+                        const newLabel = '<span style="color: #c00;">' + newIssues.join('\n') + '</span>';
+                        if (label.innerHTML !== newLabel) {
+                            label.innerHTML = newLabel;
+                        }
+
                         if (newIssues.length === 0) {
                             label.style.display = 'none';
                             border.style.display = 'none';
                             return;
                         }
+
+                        const r = table.getBoundingClientRect();
 
                         label.style.display = 'block';
                         border.style.display = 'block';
@@ -2414,8 +2692,6 @@
                         border.style.left = r.left - 8 + 'px';
                         border.style.width = r.width + 16 + 'px';
                         border.style.height = r.height + 16 + 'px';
-
-                        label.innerHTML = "<span style='color: #c00;'>" + issues.join('\n') + "</span>";
                     } else {
                         label.style.display = 'none';
                         border.style.display = 'none';
@@ -2457,7 +2733,7 @@
 
                 document.addEventListener('scroll', updatePositions, { capture: true, passive: true });
                 window.addEventListener('resize', updatePositions, { passive: true });
-                updateFunctions.push(updatePositions);
+                updateFunctions.add(updatePositions);
             });
         }
 
@@ -2503,7 +2779,18 @@
             overlayContainer.remove();
         }
 
-        document.querySelectorAll('table').forEach(table => {            
+        function clearHeaderHighlights(container) {
+            container.querySelectorAll('[style*="--a11y-table-header-highlighted"]').forEach(header => {
+                header.style.outline = '';
+                header.style.outlineOffset = '';
+                header.style.removeProperty('--a11y-table-header-highlighted');
+            });
+        }
+
+        clearHeaderHighlights(document);
+
+        const trackedElements = overlayContainer?._trackedElements;
+        trackedElements?.forEach(table => {          
             if (table._a11yTableObserver) {
                 table._a11yTableObserver.disconnect();
                 delete table._a11yTableObserver;
@@ -2515,20 +2802,14 @@
             table.removeEventListener('pointerenter', table._highlightFunction);
             table.removeEventListener('pointerleave', table._unhighlightFunction);
 
-            const index = updateFunctions.indexOf(table._updateFunction);
-            if (index > -1) updateFunctions.splice(index, 1);
-
-            const headers = table.querySelectorAll('th');
-            headers.forEach(th => {
-                th.style.outline = '';
-                th.style.outlineOffset = '';
-            });
+            updateFunctions.delete(table._updateFunction);
 
             delete table._updateFunction;
             delete table._highlightFunction;
             delete table._unhighlightFunction;
             delete table._a11yTableProcessed;
         });
+        trackedElements?.clear();
     }
 
     // Auto-run on page load
