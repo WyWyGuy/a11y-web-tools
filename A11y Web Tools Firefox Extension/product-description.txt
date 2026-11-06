@@ -9,16 +9,16 @@ This extension provides tools to analyze and fix web accessibility issues more e
 1. Image tool to quickly reveal an image's alt text.
 2. Iframe tool to reveal the title, aria-label, and aria-description of iframes.
 3. Heading tool to highlight heading levels 1-6.
-4. Contrast highlights to mark potential color contrast insufficiencies.
-5. Lang highlights to mark text that potentially needs a corrected language attribute.
-6. Table tool to highlight tables that are missing semantic details.
+4. Table tool to highlight tables that are missing semantic details.
+5. Contrast highlights to mark potential color contrast insufficiencies.
+6. Lang highlights to mark text that potentially needs a corrected language attribute.
 7. Element counting tools for table, iframe, and paragraph tags.
 8. Automatically switch to the raw HTML editor on Canvas.
 9. Automatically open all dropdowns on Canvas.
 10. Contrast inspection tool for easy analysis and copying of color codes.
 11. SLA report downloader from the Teamwork website.
 12. Highlights for the raw HTML editor in Canvas for portions of code that relate to accessibility.
-13. An aria-label fixer for Canvas pages that makes adding aria-labels simpler.
+13. Alt text and aria-label fixers for Canvas pages that makes updating accessibility faster.
 14. Automatically expand the Canvas editors.
 15. Highlight table header cells.
 16. Make counting modules easier on Canvas courses.

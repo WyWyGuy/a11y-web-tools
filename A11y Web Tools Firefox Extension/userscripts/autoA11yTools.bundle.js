@@ -348,8 +348,9 @@
             }
           }
           function getAltText(img) {
-            const roleAttr = (img.getAttribute && (img.getAttribute("role") || "")).toLowerCase();
-            return roleAttr === "presentation" ? "[Decorative]" : img.alt?.trim() || "[Missing]";
+            if (!img.hasAttribute("alt")) return "[Missing]";
+            const alt = img.alt.trim();
+            return alt || "[Decorative]";
           }
           function scanImages() {
             const images = container.querySelectorAll("img");
@@ -412,7 +413,7 @@
               label.addEventListener("pointerleave", unhighlight);
               updatePositions();
               const imgObserver = new MutationObserver(updatePositions);
-              imgObserver.observe(img, { attributes: true, attributeFilter: ["src", "alt", "role", "style", "class", "hidden"] });
+              imgObserver.observe(img, { attributes: true, attributeFilter: ["src", "alt", "style", "class", "hidden"] });
               img._a11yImgObserver = imgObserver;
               img._updateFunction = updatePositions;
               document.addEventListener("scroll", img._updateFunction, { capture: true, passive: true });

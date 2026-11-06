@@ -137,7 +137,7 @@
         return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
 
-    function customPrompt(options = {}, src = null, placeholder = "") {
+    function customAltPrompt(alt = "", src = null) {
         return new Promise((resolve) => {
             const overlay = document.createElement("div");
             overlay.style.position = "fixed";
@@ -158,7 +158,204 @@
             modal.style.boxShadow = "0 4px 20px rgba(0,0,0,0.3)";
             modal.style.maxWidth = "400px";
             modal.style.width = "90%";
+            modal.style.maxHeight = "75vh";
+            modal.style.overflowY = "auto";
             modal.style.textAlign = "center";
+            modal.classList.add("a11y-web-tools-custom-prompt");
+
+            const titleDiv = document.createElement("div");
+            titleDiv.innerHTML = "<b>Current image alt text:</b><br><br>";
+            titleDiv.style.marginBottom = "12px";
+            modal.appendChild(titleDiv);
+
+            const optionDiv = document.createElement("div");
+            optionDiv.style.marginBottom = "6px";
+            optionDiv.style.display = "flex";
+            optionDiv.style.alignItems = "center";
+            optionDiv.style.justifyContent = "space-between";
+            optionDiv.style.textAlign = "left";
+
+            const altSpan = document.createElement("span");
+            altSpan.style.marginBottom = "12px";
+            if (alt === null) {
+                altSpan.textContent = "[Missing]";
+            } else if (alt == "") {
+                altSpan.textContent = "[Decorative]";
+            } else {
+                altSpan.textContent = alt;
+            }
+            if (alt) {
+                altSpan.style.fontWeight = "bold";
+            } else {
+                altSpan.style.fontStyle = "italic";
+                altSpan.style.opacity = "0.7";
+            }
+            optionDiv.appendChild(altSpan);
+
+            modal.appendChild(optionDiv);
+
+            if (src) {
+                const img = document.createElement("img");
+                try {
+                    const previewUrl = new URL(decodeHtml(src), location.href);
+                    if (previewUrl.protocol === "https:" || previewUrl.protocol === "http:") {
+                        img.src = previewUrl.href;
+                        img.style.maxHeight = "200px";
+                        img.style.maxWidth = "100%";
+                        modal.appendChild(img);
+                    }
+                } catch (error) {
+                    console.warn("Invalid image preview URL:", error);
+                }
+            }
+
+            const decorativeLabel = document.createElement("label");
+            decorativeLabel.style.display = "inline-flex";
+            decorativeLabel.style.alignItems = "center";
+            decorativeLabel.style.gap = "8px";
+            decorativeLabel.style.margin = "12px 0";
+            decorativeLabel.style.fontWeight = "bold";
+            decorativeLabel.style.fontSize = "16px";
+            decorativeLabel.style.lineHeight = "1.2";
+            decorativeLabel.style.cursor = "pointer";
+
+            const decorativeCheckbox = document.createElement("input");
+            decorativeCheckbox.type = "checkbox";
+            decorativeCheckbox.style.width = "20px";
+            decorativeCheckbox.style.height = "20px";
+            decorativeCheckbox.style.margin = "0";
+            decorativeCheckbox.style.flexShrink = "0";
+            decorativeCheckbox.checked = alt === "";
+
+            const decorativeText = document.createElement("span");
+            decorativeText.textContent = "Mark this image as decorative";
+            decorativeText.style.display = "inline-flex";
+            decorativeText.style.alignItems = "center";
+            decorativeText.style.minHeight = "20px";
+            decorativeText.style.lineHeight = "20px";
+
+            decorativeLabel.append(decorativeCheckbox, decorativeText);
+            modal.appendChild(decorativeLabel);
+
+            const inputLabel = document.createElement("div");
+            inputLabel.innerHTML = "Type accessible alt text:";
+            inputLabel.style.margin = "12px 0 6px";
+            modal.appendChild(inputLabel);
+
+            const input = document.createElement("textarea");
+            input.rows = 1;
+            input.style.width = "80%";
+            input.style.padding = "6px 8px";
+            input.style.fontSize = "14px";
+            input.style.boxSizing = "border-box";
+            input.style.resize = "none";
+            input.style.overflowY = "hidden";
+            input.style.overflowWrap = "anywhere";
+            input.disabled = alt === "";
+            input.value = alt ? alt : "";
+            modal.appendChild(input);
+
+            function resizeInput() {
+                input.style.height = "auto";
+                const styles = getComputedStyle(input);
+                const borderHeight =
+                    parseFloat(styles.borderTopWidth) +
+                    parseFloat(styles.borderBottomWidth);
+
+                input.style.height = `${input.scrollHeight + borderHeight}px`;
+            }
+            input.addEventListener("input", resizeInput);
+
+            decorativeCheckbox.onclick = () => {
+                input.disabled = decorativeCheckbox.checked;
+            }
+
+            const confirmBtn = document.createElement("button");
+            confirmBtn.textContent = "Confirm";
+            confirmBtn.style.fontWeight = "bold";
+            confirmBtn.style.marginTop = "12px";
+            confirmBtn.style.padding = "6px 12px";
+            confirmBtn.style.fontSize = "14px";
+            confirmBtn.style.minWidth = "80px";
+            confirmBtn.onclick = () => {
+                if (input.value || decorativeCheckbox.checked) {
+                    cleanup({ confirmed: true, decorative: decorativeCheckbox.checked, alt: input.value });
+                } else {
+                    popUp("Please enter alt text for the image or mark it as decorative");
+                }
+            };
+
+            const skipBtn = document.createElement("button");
+            skipBtn.textContent = "Skip";
+            skipBtn.style.fontWeight = "bold";
+            skipBtn.style.marginTop = "12px";
+            skipBtn.style.padding = "6px 12px";
+            skipBtn.style.fontSize = "14px";
+            skipBtn.style.minWidth = "80px";
+            skipBtn.onclick = () => {
+                cleanup({ confirmed: false, decorative: decorativeCheckbox.checked, alt: input.value });
+            }
+
+            const decisionButtons = document.createElement("div");
+            decisionButtons.style.display = "flex";
+            decisionButtons.style.justifyContent = "center";
+            decisionButtons.style.gap = "50px";
+            decisionButtons.append(confirmBtn, skipBtn);
+            modal.appendChild(decisionButtons);
+
+            function handleModalKeydown(e) {
+                if (e.key !== "Enter" || !overlay.isConnected) return;
+                if (e.target instanceof Element && e.target.closest("button, input[type='checkbox']")) return;
+                e.preventDefault();
+                confirmBtn.click();
+            }
+            document.addEventListener("keydown", handleModalKeydown, true);
+
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+
+            resizeInput();
+            input.focus();
+
+            overlay.addEventListener("click", (e) => {
+                if (e.target === overlay) e.stopPropagation();
+            });
+
+            function cleanup(result) {
+                document.removeEventListener("keydown", handleModalKeydown, true);
+                if (overlay.isConnected) {
+                    overlay.remove();
+                }
+                resolve(result);
+            }
+        });
+    }
+
+    function customAriaPrompt(options = {}, src = null, placeholder = "") {
+        return new Promise((resolve) => {
+            const overlay = document.createElement("div");
+            overlay.style.position = "fixed";
+            overlay.style.top = 0;
+            overlay.style.left = 0;
+            overlay.style.width = "100vw";
+            overlay.style.height = "100vh";
+            overlay.style.backgroundColor = "rgba(0,0,0,0.6)";
+            overlay.style.display = "flex";
+            overlay.style.alignItems = "center";
+            overlay.style.justifyContent = "center";
+            overlay.style.zIndex = 999999999;
+
+            const modal = document.createElement("div");
+            modal.style.backgroundColor = "#fff";
+            modal.style.padding = "20px";
+            modal.style.borderRadius = "12px";
+            modal.style.boxShadow = "0 4px 20px rgba(0,0,0,0.3)";
+            modal.style.maxWidth = "400px";
+            modal.style.width = "90%";
+            modal.style.maxHeight = "75vh";
+            modal.style.overflowY = "auto";
+            modal.style.textAlign = "center";
+            modal.classList.add("a11y-web-tools-custom-prompt");
 
             const titleDiv = document.createElement("div");
             titleDiv.innerHTML = "<b>Current iframe attributes:</b><br><br>";
@@ -193,7 +390,11 @@
                 const useBtn = document.createElement("button");
                 useBtn.textContent = "✅";
                 useBtn.disabled = !value || value === "[Empty]";
-                useBtn.onclick = () => input.value = value;
+                useBtn.onclick = () => {
+                    input.value = value;
+                    resizeInput();
+                    input.focus();
+                }
                 optionDiv.appendChild(useBtn);
 
                 modal.appendChild(optionDiv);
@@ -206,6 +407,7 @@
                     if (previewUrl.protocol === "https:" || previewUrl.protocol === "http:") {
                         iframe.src = previewUrl.href;
                         iframe.style.maxHeight = "200px";
+                        iframe.style.maxWidth = "100%";
                         modal.appendChild(iframe);
                     }
                 } catch (error) {
@@ -218,47 +420,107 @@
             inputLabel.style.margin = "12px 0 6px";
             modal.appendChild(inputLabel);
 
-            const input = document.createElement("input");
-            input.type = "text";
+            const input = document.createElement("textarea");
+            input.rows = 1;
             input.style.width = "80%";
             input.style.padding = "6px 8px";
             input.style.fontSize = "14px";
+            input.style.boxSizing = "border-box";
+            input.style.resize = "none";
+            input.style.overflowY = "hidden";
+            input.style.overflowWrap = "anywhere";
             input.value = placeholder;
             modal.appendChild(input);
 
+            function resizeInput() {
+                input.style.height = "auto";
+                const styles = getComputedStyle(input);
+                const borderHeight =
+                    parseFloat(styles.borderTopWidth) +
+                    parseFloat(styles.borderBottomWidth);
+
+                input.style.height = `${input.scrollHeight + borderHeight}px`;
+            }
+            input.addEventListener("input", resizeInput);
+
             const confirmBtn = document.createElement("button");
             confirmBtn.textContent = "Confirm";
+            confirmBtn.style.fontWeight = "bold";
             confirmBtn.style.marginTop = "12px";
             confirmBtn.style.padding = "6px 12px";
             confirmBtn.style.fontSize = "14px";
+            confirmBtn.style.minWidth = "80px";
             confirmBtn.onclick = () => {
-                cleanup();
-                resolve(input.value);
-            };
-            modal.appendChild(confirmBtn);
-
-            input.addEventListener("keydown", (e) => {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    confirmBtn.click();
+                if (input.value) {
+                    cleanup({ confirmed: true, label: input.value });
+                } else {
+                    popUp("Please enter an aria-label for the iframe");
                 }
-            });
+            };
+
+            const skipBtn = document.createElement("button");
+            skipBtn.textContent = "Skip";
+            skipBtn.style.fontWeight = "bold";
+            skipBtn.style.marginTop = "12px";
+            skipBtn.style.padding = "6px 12px";
+            skipBtn.style.fontSize = "14px";
+            skipBtn.style.minWidth = "80px";
+            skipBtn.onclick = () => {
+                cleanup({ confirmed: false, label: input.value });
+            }
+
+            const decisionButtons = document.createElement("div");
+            decisionButtons.style.display = "flex";
+            decisionButtons.style.justifyContent = "center";
+            decisionButtons.style.gap = "50px";
+            decisionButtons.append(confirmBtn, skipBtn);
+            modal.appendChild(decisionButtons);
+
+            function handleModalKeydown(e) {
+                if (e.key !== "Enter" || !overlay.isConnected) return;
+                if (e.target instanceof Element && e.target.closest("button, input[type='checkbox']")) return;
+                e.preventDefault();
+                confirmBtn.click();
+            }
+            document.addEventListener("keydown", handleModalKeydown, true);
 
             overlay.appendChild(modal);
             document.body.appendChild(overlay);
 
+            resizeInput();
             input.focus();
 
             overlay.addEventListener("click", (e) => {
                 if (e.target === overlay) e.stopPropagation();
             });
 
-            function cleanup() {
+            function cleanup(result) {
+                document.removeEventListener("keydown", handleModalKeydown, true);
                 if (overlay.isConnected) {
                     overlay.remove();
                 }
+                resolve(result);
             }
         });
+    }
+
+    function getAttribute(attrs, name) {
+        const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const attrRegex = new RegExp(
+            `(?:^|\\s)${escapedName}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\\x60]+))`,
+            "i"
+        );
+        const attrMatch = attrs.match(attrRegex);
+        return attrMatch ? (attrMatch[1] ?? attrMatch[2] ?? attrMatch[3] ?? "") : null;
+    }
+
+    function removeAttribute(attrs, name) {
+        const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const attrRegex = new RegExp(
+            `(?:^|\\s)${escapedName}\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s"'=<>\\x60]+)`,
+            "i"
+        );
+        return attrs.replace(attrRegex, " ").replace(/\s+/g, " ").trim();
     }
 
     function popUp(message) {
@@ -275,7 +537,7 @@
             borderRadius: "8px",
             fontSize: "14px",
             fontFamily: "sans-serif",
-            zIndex: "9999",
+            zIndex: "10000000000",
             opacity: "0",
             transition: "opacity 0.3s ease",
             pointerEvents: "none"
@@ -293,6 +555,78 @@
         }, 3000);
     }
 
+    async function altTextUpdate(textarea) {
+        const before = textarea.value;
+        if (!before) return;
+        if (getComputedStyle(textarea).display === 'none') {
+            popUp("Please switch to the raw HTML editor to use this feature");
+            return;
+        }
+
+        const imageRegex = /<img\b(?:"[^"]*"|'[^']*'|[^'">])*>/gi;
+        let match;
+        const matches = [];
+
+        while ((match = imageRegex.exec(before)) !== null) {
+            const fullMatch = match[0];
+            const rawAttrs = fullMatch.slice("<img".length, -1);
+            const selfClosing = /\/\s*$/.test(rawAttrs);
+            const attrs = selfClosing ? rawAttrs.replace(/\/\s*$/, "") : rawAttrs;
+
+            matches.push({
+                fullMatch,
+                attrs,
+                selfClosing,
+                index: match.index
+            });
+        }
+
+        const replacements = [];
+        let processed = 0;
+
+        for (const item of matches) {
+            const { fullMatch, attrs, selfClosing } = item;
+
+            const rawAlt = getAttribute(attrs, "alt");
+            const rawSrc = getAttribute(attrs, "src");
+
+            const alt = rawAlt === null ? null : decodeHtml(rawAlt);
+            const src = rawSrc === null ? null : rawSrc;
+
+            const result = await customAltPrompt(alt, src);
+
+            if (!result.confirmed) continue;
+            processed += 1;
+
+            let newAttrs = removeAttribute(attrs, "alt");
+
+            if (result.decorative) {
+                newAttrs += ` alt=""`;
+            } else {
+                newAttrs += ` alt="${escapeHtml(result.alt)}"`;
+            }
+
+            replacements.push({
+                start: item.index,
+                end: item.index + fullMatch.length,
+                replacement: `<img${newAttrs ? ` ${newAttrs}` : ""}${selfClosing ? " />" : ">"}`
+            });
+        }
+
+        let newHTML = "";
+        let lastIndex = 0;
+        for (const replacement of replacements) {
+            newHTML += before.slice(lastIndex, replacement.start);
+            newHTML += replacement.replacement;
+            lastIndex = replacement.end;
+        }
+        newHTML += before.slice(lastIndex);
+        textarea.value = newHTML;
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+
+        popUp(`Processed ${processed} image${processed === 1 ? "" : "s"}`);
+    }
+
     async function ariaLabelUpdate(textarea) {
         const before = textarea.value;
         if (!before) return;
@@ -301,28 +635,34 @@
             return;
         }
 
-        const iframeRegex = /<iframe\b([^>]*)>/gi;
+        const iframeRegex = /<iframe\b(?:"[^"]*"|'[^']*'|[^'">])*>/gi
         let match;
         const matches = [];
 
         while ((match = iframeRegex.exec(before)) !== null) {
-            matches.push({ fullMatch: match[0], attrs: match[1], index: match.index });
+            const fullMatch = match[0];
+            const attrs = fullMatch.slice("<iframe".length, -1);
+            matches.push({
+                fullMatch,
+                attrs,
+                index: match.index
+            });
         }
 
         const replacements = [];
+        let processed = 0;
 
         for (const item of matches) {
             const { fullMatch, attrs } = item;
 
-            const titleMatch = attrs.match(/\btitle="([^"]*)"/i);
-            const descMatch = attrs.match(/\bdescription="([^"]*)"/i);
-            const ariaMatch = attrs.match(/\baria-label="([^"]*)"/i);
+            const rawTitle = getAttribute(attrs, "title");
+            const rawDesc = getAttribute(attrs, "aria-description");
+            const rawAria = getAttribute(attrs, "aria-label");
 
-            const title = titleMatch ? decodeHtml(titleMatch[1]) : null;
-            const description = descMatch ? decodeHtml(descMatch[1]) : null;
-            const aria = ariaMatch ? decodeHtml(ariaMatch[1]) : null;
+            const title = rawTitle === null ? null : decodeHtml(rawTitle);
+            const description = rawDesc === null ? null : decodeHtml(rawDesc);
+            const aria = rawAria === null ? null : decodeHtml(rawAria);
 
-            let newLabel = "";
             const existing = [title, description, aria].filter(v => v && v.trim() !== "");
 
             /*
@@ -338,7 +678,7 @@
                 const previewMatch = attrs.match(/\bsrc="([^"]*)"/i);
                 const preview = previewMatch ? previewMatch[1] : null;
 
-                newLabel = await customPrompt({
+                newLabel = await customAriaPrompt({
                     "aria-label": aria,
                     "aria-description": description,
                     "title": title
@@ -346,8 +686,8 @@
             }
             */
 
-            const previewMatch = attrs.match(/\bsrc="([^"]*)"/i);
-            const preview = previewMatch ? previewMatch[1] : null;
+            const rawSrc = getAttribute(attrs, "src");
+            const src = rawSrc === null ? null : rawSrc;
 
             let suggestion = "";
             if (
@@ -358,27 +698,26 @@
                 suggestion = existing[0];
             }
 
-            newLabel = await customPrompt({
+            const result = await customAriaPrompt({
                 "aria-label": aria,
                 "aria-description": description,
                 "title": title
-            }, preview, suggestion);
+            }, src, suggestion);
 
-            let newAttrs = attrs
-            .replace(/\btitle="[^"]*"/i, "")
-            .replace(/\bdescription="[^"]*"/i, "")
-            .replace(/\baria-label="[^"]*"/i, "")
-            .trim();
+            if (!result.confirmed) continue;
+            processed += 1;
 
-            if (newLabel) newAttrs += ` aria-label="${escapeHtml(newLabel)}"`;
+            let newAttrs = removeAttribute(attrs, "title");
+            newAttrs = removeAttribute(newAttrs, "aria-description");
+            newAttrs = removeAttribute(newAttrs, "aria-label");
 
-            if (newLabel && newLabel.trim() !== "") {
-                replacements.push({
-                    start: item.index,
-                    end: item.index + fullMatch.length,
-                    replacement: `<iframe ${newAttrs}>`
-                });
-            }
+            newAttrs += ` aria-label="${escapeHtml(result.label)}"`;
+
+            replacements.push({
+                start: item.index,
+                end: item.index + fullMatch.length,
+                replacement: `<iframe${newAttrs ? ` ${newAttrs}` : ""}>`
+            });
         }
 
         let newHTML = "";
@@ -392,7 +731,7 @@
         textarea.value = newHTML;
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
 
-        popUp(`Processed ${matches.length} iframe${matches.length === 1 ? "" : "s"}`);
+        popUp(`Processed ${processed} iframe${processed === 1 ? "" : "s"}`);
     }
 
     function findRealSaveButton(textarea) {
@@ -521,6 +860,12 @@
         const counter = document.createElement("span");
         counter.textContent = "0 / 0";
 
+        const altFixer = document.createElement("button");
+        altFixer.textContent = "Fix Alt Text";
+        altFixer.type = "button";
+        altFixer.classList.add("helper-canvas-style-button");
+        altFixer.onclick = () => altTextUpdate(textarea);
+
         const ariaFixer = document.createElement("button");
         ariaFixer.textContent = "Fix Aria-labels";
         ariaFixer.type = "button";
@@ -536,7 +881,7 @@
             if (realBtn) {
                 realBtn.click();
             } else {
-                popUp("No save button found.");
+                popUp("No Canvas save button found");
             }
         });
 
@@ -544,7 +889,7 @@
         buttonLine.style.display = "flex";
         buttonLine.style.alignItems = "center";
         buttonLine.style.gap = "4px";
-        buttonLine.append(ariaFixer, saveBtn);
+        buttonLine.append(altFixer, ariaFixer, saveBtn);
 
         const searchLine = document.createElement("div");
         searchLine.style.display = "flex";
@@ -866,6 +1211,8 @@
 
             } else if (e.key.toLowerCase() === "s") {
 
+                if (document.querySelector(".a11y-web-tools-custom-prompt")) return;
+
                 e.preventDefault();
                 const textarea = document.activeElement;
                 if (!textarea || textarea.tagName !== "TEXTAREA") return;
@@ -873,7 +1220,7 @@
                 if (realBtn) {
                     realBtn.click();
                 } else {
-                    popUp("No save button found.");
+                    popUp("No Canvas save button found");
                 }
 
             }
