@@ -202,6 +202,8 @@
                         img.src = previewUrl.href;
                         img.style.maxHeight = "200px";
                         img.style.maxWidth = "100%";
+                        img.style.display = "block";
+                        img.style.margin = "0 auto";
                         modal.appendChild(img);
                     }
                 } catch (error) {
